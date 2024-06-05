@@ -22,6 +22,8 @@ To get started with these simulations:
    python schrodinger_1d.py
    ```
 
+Some example configurations are available in the `examples_1d` directory.
+
 ## Contributing
 
 Contributions to the simulation of Schrödinger project are welcome. Whether it's through submitting bug reports, proposing new features, or contributing to the code, your help is appreciated. For major changes, please open an issue first to discuss what you would like to change.
