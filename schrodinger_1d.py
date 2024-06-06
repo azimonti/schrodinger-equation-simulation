@@ -33,6 +33,41 @@ def create_wavepacket(x):
     return psi0
 
 
+def create_superposition(x):
+    match p.potential:
+        case 1:
+            # harmonic oscillator
+            #n_list = cfg.eigenfunctions_list
+            a = np.sqrt(p.hbar / (p.m * p.omega))  # characteristic length scale
+
+            psi = sum(np.exp(-1j * n * p.omega * p.p)
+                      * (1.0 / np.sqrt(2.0**n * np.math.factorial(n)))
+                      * (1.0 / np.pi**0.25)
+                      * hermite(n)(x / a)
+                      * np.exp(-x**2 / (2 * a**2))
+                      for n in cfg.eigenfunctions_list)
+            # normalization
+            norm = np.sqrt(integrate.simps(np.abs(psi)**2, x))
+            psi /= norm
+        case 2:
+            # infinite high barrier
+            L = 2 * p.Vx_bar
+            p0 = p.p
+            # superposition of eigenfunctions
+            psi = sum(np.exp(-1j * n * np.pi * p0 / L)
+                      * np.sqrt(2 / L) * np.sin(n * np.pi * (x + p.Vx_bar) / L)
+                      for n in cfg.eigenfunctions_list)
+            # zero out the wave function outside the well [-p.Vx_bar, p.Vx_bar]
+            psi = np.where((x >= -p.Vx_bar) & (x <= p.Vx_bar), psi, 0)
+            # normalization
+            norm = np.sqrt(np.sum(np.abs(psi)**2) * (x[1] - x[0]))
+            psi /= norm
+        case _:
+            raise NotImplementedError(
+                f"Superposition for potential {p.potential} not implemented")
+    return psi
+
+
 def T_wavepacket(psi):
     d2psi_dx2 = np.gradient(np.gradient(psi, p.dx), p.dx)
     T_density = -0.5 * p.hbar ** 2 / p.m * np.conj(psi) * d2psi_dx2
@@ -52,8 +87,8 @@ def create_potential(x):
             # infinite high barrier
             V = np.zeros(len(x))
             # with a value too big RK solver is not converging
-            V[x <= -p.Vx_bar] = p.Vx_bar * 1000
-            V[x >= p.Vx_bar] = p.Vx_bar * 1000
+            V[x <= -p.Vx_bar] = 1e4
+            V[x >= p.Vx_bar] = 1e4
             return V
         case 3:
             # infinite right barrier
@@ -67,7 +102,7 @@ def create_potential(x):
             return V
         case _:
             raise NotImplementedError(
-                f"Potential {p.potential} not Implemented")
+                f"Potential {p.potential} not implemented")
 
 
 # Define the time evolution function for solve_ivp
@@ -207,7 +242,10 @@ class MyPlotter(BasePlotter):
         # are the necessary number of seconds in the animation
         self._step = len(self._t) // self._total_frames + 1
         self._x = np.arange(-p.x_max, p.x_max, p.dx)
-        self._psi = create_wavepacket(self._x)
+        if cfg.superposition:
+            self._psi = create_superposition(self._x)
+        else:
+            self._psi = create_wavepacket(self._x)
         N = len(self._x)
         # define the potential and plot it
         self._V = create_potential(self._x)

@@ -6,6 +6,7 @@
 /*      2024/06/02      */
 /************************/
 '''
+import numpy as np
 import sys
 from types import SimpleNamespace
 
@@ -27,6 +28,8 @@ p1 = SimpleNamespace(
 )
 
 cfg = SimpleNamespace(
+    superposition=False,  # use wavepackets or eigenfunctions
+    eigenfunctions_list=np.array([1, 2]),  # superposition list
     compute_prob=True,  # compute probability at each step
     plot_prob=True,     # plot probability or wavefunction
     plot_phase=True,    # plot real an imaginary or phase
