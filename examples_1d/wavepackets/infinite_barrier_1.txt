@@ -1,3 +1,5 @@
+# infinite potential barrier with <p> < V_barrier, most of the wave is reflected
+
 p1 = SimpleNamespace(
     x0=2.0,       # initial position of the wavepacket
     p=1.0,        # initial momentum of the wavepacket

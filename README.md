@@ -110,6 +110,24 @@ Barrier of infinite length wavefunction with phase:
 
 ![Barrier of infinite length wavefunction](examples_1d/wavepackets/gif/infinite_barrier_1_wf_2.gif)
 
+## Example Results - Eigensolutions 
+
+Harmonic oscillator single eigensolution for `n=3` showing no change in the wavefunction magnitude, only a change in the phase:
+
+![Harmonic oscillator wavefunction](examples_1d/eigensolutions/gif/harmonic_osc_2_wf_2.gif)
+
+Harmonic oscillator superposition of the first two eigensolutions showing periodic oscillations in the probability density:
+
+![Harmonic oscillator probability density](examples_1d/eigensolutions/gif/harmonic_osc_3_prob.gif)
+
+Infinite potential well single eigensolution for `n=3` showing no change in the wavefunction magnitude, only a change in the phase:
+
+![Infinite potential well wavefunction](examples_1d/eigensolutions/gif/infinite_well_1_wf_1.gif)
+
+Infinite potential well superposition of the first three eigensolutions showing periodic oscillations in the probability density:
+
+![Infinite potential well probability density](examples_1d/eigensolutions/gif/infinite_well_3_prob.gif)
+
 ## Contributing
 
 Contributions to the simulation of Schrödinger project are welcome. Whether it's through submitting bug reports, proposing new features, or contributing to the code, your help is appreciated. For major changes, please open an issue first to discuss what you would like to change.
