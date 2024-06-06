@@ -1,3 +1,5 @@
+# harmonic oscillator, the wave is oscillating with the inversion at the energy correspondent to the classical case
+
 p1 = SimpleNamespace(
     x0=1.0,       # initial position of the wavepacket
     p=3.0,        # initial momentum of the wavepacket

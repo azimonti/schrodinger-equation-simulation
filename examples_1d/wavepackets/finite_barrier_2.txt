@@ -1,3 +1,5 @@
+# finite potential barrier with <p> ~ V_barrier, a good chunk of the wave is transferred within the barrier
+
 p1 = SimpleNamespace(
     x0=2.0,       # initial position of the wavepacket
     p=3.05,       # initial momentum of the wavepacket
