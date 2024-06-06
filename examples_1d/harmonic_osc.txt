@@ -12,13 +12,13 @@ p1 = SimpleNamespace(
     omega=1.0,    # angular frequency of the harmonic oscillator
     Vx_bar=5.0,   # barrier location
     V_barrier=2.0,  # infinite long barrier potential
-    Vx_finite_bar=6.2,  # finite barrier end
-    plot_prob=True,     # plot probability or wavefunction
-    plot_phase=True,    # plot real an imaginary or phase
-    increase_precision=True # use Runge-Kutta or Euler
+    Vx_finite_bar=6.2  # finite barrier end
 )
 
-    params = {
-        'total_duration': 10,
-        'fps': 30
-    }
+cfg = SimpleNamespace(
+    compute_prob=False, # compute probability at each step
+    plot_prob=True,     # plot probability or wavefunction
+    plot_phase=True,    # plot real an imaginary or phase
+    increase_precision=True,  # use Runge-Kutta or Euler
+    rk_method='DOP853'  # RK method 'RK23', 'RK45', or 'DOP853'
+)

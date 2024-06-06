@@ -11,9 +11,10 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import PolyCollection
 import numpy as np
 from scipy import integrate, sparse
+from scipy.special import hermite
 import sys
 
-from mod_config import palette, p1
+from mod_config import cfg, palette, p1
 from mod_plotter import BasePlotter
 
 
@@ -95,12 +96,12 @@ class MyPlotter(BasePlotter):
         else:
             xlimd = -5
             xlimu = 15
-        if p.plot_prob:
+        if cfg.plot_prob:
             ylimd = -0.1
             ylimu = 1.0
             y_xi = -0.05
         else:
-            if p.plot_phase:
+            if cfg.plot_phase:
                 ylimd = -0.1
                 y_xi = -0.05
             else:
@@ -222,7 +223,7 @@ class MyPlotter(BasePlotter):
 
         # if scipy is not used, allocate the dense matrices for the matrix
         # multiplication
-        if not p.increase_precision:
+        if not cfg.increase_precision:
             self._A = np.zeros((N, N), dtype=complex)
             self._B = np.zeros((N, N), dtype=complex)
             # Create identity matrix
@@ -240,11 +241,11 @@ class MyPlotter(BasePlotter):
                         2 * p.hbar) * H_dense[i, j]
 
         # initialize the plots and store the line objects
-        if p.plot_prob:
+        if cfg.plot_prob:
             self._line, = ax.plot([], [], lw=2, color=c.r, label='$|\\Psi|^2$')
             plt.legend(handles=[self._line], fontsize=24)
         else:
-            if p.plot_phase:
+            if cfg.plot_phase:
                 self._poly = PolyCollection([], cmap='hsv', edgecolors='none')
                 ax.add_collection(self._poly)
             else:
@@ -253,7 +254,7 @@ class MyPlotter(BasePlotter):
                 self._line2, = ax.plot(
                     [], [], lw=1.5, color=c.o, label='$\\Im\\{\\Psi\\}$')
             self._line3, = ax.plot([], [], lw=2, color=c.g, label='$|\\Psi|$')
-            if p.plot_phase:
+            if cfg.plot_phase:
                 plt.legend(handles=[self._line3], fontsize=24)
             else:
                 plt.legend(
@@ -305,15 +306,13 @@ class MyPlotter(BasePlotter):
             super().frame_update(i)
 
         # advance time evolution
-        if p.increase_precision:
+        if cfg.increase_precision:
             # define the time span and evaluation points for do many steps
             # with a single calculation
             t_span = [0, self._step * p.dt]
             t_eval = np.linspace(0, self._step * p.dt, self._step + 1)
             sol = integrate.solve_ivp(
-                # schrodinger_rhs, t_span, self._psi, method='RK23',
-                # schrodinger_rhs, t_span, self._psi, method='RK45',
-                schrodinger_rhs, t_span, self._psi, method='DOP853',
+                schrodinger_rhs, t_span, self._psi, method=cfg.rk_method,
                 t_eval=t_eval, args=(self._H,))
             self._psi = sol.y[:, -1]  # update psi to the last computed value
         else:
@@ -322,11 +321,11 @@ class MyPlotter(BasePlotter):
         self.plot_update(i + 1)
 
     def plot_update(self, cur_step: int):
-        if p.plot_prob:
+        if cfg.plot_prob:
             self._line.set_data(
                 self._x, abs(self._psi.conjugate() * self._psi))
         else:
-            if p.plot_phase:
+            if cfg.plot_phase:
                 # extract the phase of psi
                 phase = np.angle(self._psi)
                 # normalize phase to [0, 1] for hsl
@@ -347,7 +346,15 @@ class MyPlotter(BasePlotter):
             self._line3.set_data(self._x, abs(self._psi))
         # take into account minor rounding on the last iteration
         t_end = self._step * p.dt * cur_step
-        formatted_text = (f'$t={t_end:.2f}$')
+        if cfg.compute_prob:
+            # compute the probability density
+            prob = integrate.simps(
+                np.abs(self._psi.conj() * self._psi), self._x)
+            formatted_text = (
+                f"$\\begin{{array}}{{rl}} t & = {t_end:.2f} \\\\"
+                + f"P & = {prob:.2f} \\end{{array}}$")
+        else:
+            formatted_text = (f'$t={t_end:.2f}$')
         self._text_obj.set_text(formatted_text)
 
 
