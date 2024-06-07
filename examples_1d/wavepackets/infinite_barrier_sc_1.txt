@@ -1,0 +1,30 @@
+# infinite small scale potential barrier with <p> < V_barrier, most of the wave is reflected
+
+electron_params = SimpleNamespace(
+    x0=2e-10,         # initial position of the wavepacket in meters
+    p=1e-24,          # initial momentum of the wavepacket in kg*m/s
+    sigma=1e-10,      # sigma of the wavepacket in meters
+    hbar=1.054e-34,   # Planck's constant (scaled)
+    m=9.109e-31,      # mass of an electron in kg
+    dx=1e-12,         # spatial step size in meters
+    dt=1e-18,         # time step size in seconds
+    x_max=30e-10,     # spatial domain limit in meters
+    t_max=9e-16,      # time domain limit in seconds
+    potential=3,      # potential to use
+    omega=1.5e15,     # angular frequency of the harmonic oscillator in rad/s
+    Vx_bar=5e-10,     # barrier location in meters
+    V_barrier=2e-18,  # infinite long barrier potential in joules
+    Vx_finite_bar=6.2e-10 # finite barrier end in meters
+)
+
+cfg = SimpleNamespace(
+    small_scale=True,    # domain scaled at electron size
+    superposition=False,  # use wavepackets or eigenfunctions
+    eigenfunctions_list=np.array([1, 2]),  # superposition list
+    compute_prob=False, # compute probability at each step
+    plot_prob=True,     # plot probability or wavefunction
+    plot_phase=True,    # plot real an imaginary or phase
+    increase_precision=True,  # use Runge-Kutta or Euler
+    rk_method='DOP853',  # RK method 'RK23', 'RK45', or 'DOP853'
+    verbose=False
+)
