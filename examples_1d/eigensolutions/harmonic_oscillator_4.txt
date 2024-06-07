@@ -18,11 +18,13 @@ p1 = SimpleNamespace(
 )
 
 cfg = SimpleNamespace(
+    small_scale=False,  # domain scaled at electron size
     superposition=True, # use wavepackets or eigenfunctions
     eigenfunctions_list=np.array([0, 1, 2]),  # superposition list
     compute_prob=False, # compute probability at each step
     plot_prob=True,     # plot probability or wavefunction
     plot_phase=True,    # plot real an imaginary or phase
     increase_precision=True,  # use Runge-Kutta or Euler
-    rk_method='DOP853'  # RK method 'RK23', 'RK45', or 'DOP853'
+    rk_method='DOP853',  # RK method 'RK23', 'RK45', or 'DOP853'
+    verbose=False
 )
