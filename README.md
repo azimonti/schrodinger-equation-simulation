@@ -24,6 +24,10 @@ Numerical simulation of the Schrödinger equation in 1D.
   - Implicit Crank-Nicolson (second-order)
   - Explicit Runge-Kutta (8th order)
 
+- **Units**:
+  - Electron scale units 
+  - Normalized units 
+
 ## Potential Function
 
 ```python
@@ -139,6 +143,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE.md) f
 ## Contact
 
 This README provides a comprehensive overview of your Schrödinger equation simulation project, including its features, usage instructions, and potential types.
+
+Please refer to this article <a href="https://www.azimonti.com/programming/simulations/qm/1d-schrodinger-equation.html" target="_blank">here</a> for more detail explaination of the numerical aspects of the simulation.
 
 If you have any questions or want to get in touch regarding the project, please open an issue or contact the repository maintainers directly through GitHub.
 
