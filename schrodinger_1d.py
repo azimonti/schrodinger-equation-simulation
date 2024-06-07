@@ -2,8 +2,8 @@
 '''
 /**********************/
 /*  schrodinger_1d.py */
-/*    Version 1.0     */
-/*    2024/06/02      */
+/*    Version 1.1     */
+/*    2024/06/07      */
 /**********************/
 '''
 import argparse
@@ -14,13 +14,13 @@ from scipy import integrate, sparse
 from scipy.special import hermite
 import sys
 
-from mod_config import cfg, palette, p1
+from mod_config import cfg, palette, p1, electron_params
 from mod_plotter import BasePlotter
 
 
 c = palette
 # select the set of parameters to use
-p = p1
+p = electron_params if cfg.small_scale else p1
 
 
 def create_wavepacket(x):
@@ -37,9 +37,8 @@ def create_superposition(x):
     match p.potential:
         case 1:
             # harmonic oscillator
-            #n_list = cfg.eigenfunctions_list
-            a = np.sqrt(p.hbar / (p.m * p.omega))  # characteristic length scale
-
+            # characteristic length scale
+            a = np.sqrt(p.hbar / (p.m * p.omega))
             psi = sum(np.exp(-1j * n * p.omega * p.p)
                       * (1.0 / np.sqrt(2.0**n * np.math.factorial(n)))
                       * (1.0 / np.pi**0.25)
@@ -87,8 +86,10 @@ def create_potential(x):
             # infinite high barrier
             V = np.zeros(len(x))
             # with a value too big RK solver is not converging
-            V[x <= -p.Vx_bar] = 1e4
-            V[x >= p.Vx_bar] = 1e4
+            # we set the barrier ~1e4 times the value of an average V_0
+            V_inf = 2e-14 if cfg.small_scale else 1e4
+            V[x <= -p.Vx_bar] = V_inf
+            V[x >= p.Vx_bar] = V_inf
             return V
         case 3:
             # infinite right barrier
@@ -125,112 +126,168 @@ class MyPlotter(BasePlotter):
         ax.xaxis.set_ticks_position('none')
         ax.yaxis.set_ticks_position('none')
         ax.grid(linewidth=0.4, linestyle="--", dashes=(5, 20))
-        if p.potential == 1 or p.potential == 2:
-            xlimd = -10
-            xlimu = 10
+        if cfg.small_scale:
+            scalex = 1e-10
+            if cfg.plot_prob:
+                scaley = 1e10
+            else:
+                scaley = 1e5
         else:
-            xlimd = -5
-            xlimu = 15
+            scalex = 1
+            scaley = 1
+
+        if p.potential == 1 or p.potential == 2:
+            xlimd = -10 * scalex
+            xlimu = 10 * scalex
+        else:
+            xlimd = -5 * scalex
+            xlimu = 15 * scalex
         if cfg.plot_prob:
-            ylimd = -0.1
-            ylimu = 1.0
-            y_xi = -0.05
+            ylimd = -0.1 * scaley
+            ylimu = 1.0 * scaley
+            y_xi = -0.05 * scaley
         else:
             if cfg.plot_phase:
-                ylimd = -0.1
-                y_xi = -0.05
+                ylimd = -0.1 * scaley
+                y_xi = -0.05 * scaley
             else:
-                ylimd = -1.0
-                y_xi = -0.1
-            ylimu = 1.0
+                ylimd = -1.0 * scaley
+                y_xi = -0.1 * scaley
+            ylimu = 1.0 * scaley
+        if not cfg.small_scale:
+            ax.text(xlimu, y_xi, '$\\xi$', fontsize=18)
+            ax.set_yticklabels([])
+            ax.set_xticklabels([])
         ax.set_xlim(xlimd, xlimu)
         ax.set_ylim(ylimd, ylimu)
-        ax.set_yticklabels([])
-        ax.set_xticklabels([])
-        ax.text(xlimu - 0.5, y_xi, '$\\xi$', fontsize=18)
 
     def create_barrier(self, ax):
         color = (0.83, 0.83, 0.83)
+        if cfg.small_scale:
+            scalex = 1e-10
+            if cfg.plot_prob:
+                scaley = 1e10
+            else:
+                scaley = 1e5
+        else:
+            scalex = 1
+            scaley = 1
         match p.potential:
             case 0:
                 ax.plot(self._x, self._V,
                         color="k", linestyle="-", linewidth=1)
-                y1 = self._V - 0.2
+                y1 = self._V - 0.2 * scaley
                 ax.fill_between(self._x, self._V, y1,
                                 where=(self._V > y1), color=color)
             case 1:
+                if cfg.small_scale:
+                    if cfg.plot_prob:
+                        scale2 = 1e27
+                    else:
+                        scale2 = 1e22
+                else:
+                    scale2 = 0.05
                 # spread the potential for visualization
-                V = self._V / 20
+                V = self._V * scale2
                 ax.plot(self._x, V, color="k", linestyle="-", linewidth=1)
                 # Calculate total initial energy
                 E = p.p**2 / (2 * p.m) + 0.5 * p.m * p.omega**2 * p.x0**2
                 # Calculate turning points
                 x_turn = np.sqrt(2 * E / (p.m * p.omega**2))
-                ax.plot([-x_turn, -x_turn], [0, 1000], color='k',
+                if cfg.verbose:
+                    print(f"inversion point ±{x_turn}")
+                ax.plot([-x_turn, -x_turn], [0, 1000 * scaley], color='k',
                         linestyle='--', dashes=(10, 10), linewidth=0.7)
-                ax.plot([x_turn, x_turn], [0, 1000], color='k', linestyle='--',
-                        dashes=(10, 10), linewidth=0.7)
-                y1 = (self._V - 5) / 20 - 0.1 * self._x**2 / 20
+                ax.plot([x_turn, x_turn], [0, 10001000 * scaley], color='k',
+                        linestyle='--', dashes=(10, 10), linewidth=0.7)
+                if cfg.small_scale:
+                    if cfg.plot_prob:
+                        y1 = (V - 1e9) - 0.1 * self._x**2 * scale2
+                    else:
+                        y1 = (V - 2e4) - 0.1 * self._x**2 * scale2
+                else:
+                    y1 = (self._V - 5) / 20 - 0.1 * self._x**2 / 20
                 ax.fill_between(self._x, V, y1, where=(V > y1), color=color)
             case 2:
                 px = np.array([-p.Vx_bar, -p.Vx_bar, p.Vx_bar, p.Vx_bar])
-                py = np.array([1e10, 0, 0, 1e10])
+                py = np.array([1e12, 0, 0, 1e12])
                 ax.plot(px, py, color="k", linestyle="-", linewidth=1)
-                px = np.array([-p.Vx_bar - 1, -p.Vx_bar])
-                py = np.array([1e10, 1e10])
-                y1 = np.array([-0.2, -0.2])
+                px = np.array([-p.Vx_bar - 1 * scalex, -p.Vx_bar])
+                py = np.array([1e12, 1e12])
+                y1 = np.array([-0.2 * scaley, -0.2 * scaley])
                 ax.fill_between(px, py, y1, where=(py > y1), color=color)
-                px = np.array([p.Vx_bar, p.Vx_bar + 1])
-                py = np.array([1e10, 1e10])
-                y1 = np.array([-0.2, -0.2])
+                px = np.array([p.Vx_bar, p.Vx_bar + 1 * scalex])
+                py = np.array([1e12, 1e12])
+                y1 = np.array([-0.2 * scaley, -0.2 * scaley])
                 ax.fill_between(px, py, y1, where=(py > y1), color=color)
                 px = np.array([-p.Vx_bar, p.Vx_bar])
                 py = np.array([0, 0])
-                y1 = np.array([-0.2, -0.2])
+                y1 = np.array([-0.2 * scaley, -0.2 * scaley])
                 ax.fill_between(px, py, y1, where=(py > y1), color=color)
             case 3:
+                if cfg.small_scale:
+                    if cfg.plot_prob:
+                        scale2 = 0.5e28
+                    else:
+                        scale2 = 0.5e23
+                else:
+                    scale2 = 0.5
                 # shrink the potential for visualization
-                V = p.V_barrier / 2
+                V = p.V_barrier * scale2
                 px = np.array([-p.x_max, p.Vx_bar, p.Vx_bar, p.x_max])
                 py = np.array([0, 0, V, V])
                 ax.plot(px, py, color="k", linestyle="-", linewidth=1)
-                px = np.array([p.Vx_bar, p.Vx_bar + 1.2])
+                px = np.array([p.Vx_bar, p.Vx_bar + 1.2 * scalex])
                 py = np.array([V, V])
-                y1 = np.array([-0.2, -0.2])
+                y1 = np.array([-0.2 * scaley, -0.2 * scaley])
                 ax.fill_between(px, py, y1, where=(py > y1), color=color)
                 px = np.array([-p.x_max, p.Vx_bar])
                 py = np.array([0, 0])
-                y1 = np.array([-0.2, -0.2])
+                y1 = np.array([-0.2 * scaley, -0.2 * scaley])
                 ax.fill_between(px, py, y1, where=(py > y1), color=color)
                 px = np.array([p.Vx_bar, p.x_max])
                 py = np.array([V, V])
-                y1 = np.array([V - 0.2, V - 0.2])
+                y1 = np.array([V - 0.2 * scaley, V - 0.2 * scaley])
                 ax.fill_between(px, py, y1, where=(py > y1), color=color)
             case 4:
+                if cfg.small_scale:
+                    if cfg.plot_prob:
+                        scale2 = 0.5e28
+                    else:
+                        scale2 = 0.5e23
+                else:
+                    scale2 = 0.5
                 # shrink the potential for visualization
-                V = p.V_barrier / 2
+                V = p.V_barrier * scale2
                 px = np.array([-p.x_max, p.Vx_bar, p.Vx_bar,
                                p.Vx_finite_bar, p.Vx_finite_bar, p.x_max])
                 py = np.array([0, 0, V, V, 0, 0])
                 ax.plot(px, py, color="k", linestyle="-", linewidth=1)
-                px = np.array([p.Vx_bar, p.Vx_bar + 1.2])
+                px = np.array([p.Vx_bar, p.Vx_bar + 1.2 * scalex])
                 py = np.array([V, V])
                 y1 = np.array([0, 0])
                 ax.fill_between(px, py, y1, where=(py > y1), color=color)
                 px = np.array([-p.x_max, p.Vx_bar])
                 py = np.array([0, 0])
-                y1 = np.array([-0.2, -0.2])
+                y1 = np.array([-0.2 * scaley, -0.2 * scaley])
                 ax.fill_between(px, py, y1, where=(py > y1), color=color)
                 px = np.array([p.Vx_finite_bar, p.x_max])
                 py = np.array([0, 0])
-                y1 = np.array([-0.2, -0.2])
+                y1 = np.array([-0.2 * scaley, -0.2 * scaley])
                 ax.fill_between(px, py, y1, where=(py > y1), color=color)
 
         if p.potential == 3 or p.potential == 4:
             T = T_wavepacket(self._psi)
-            latex_str = (
-                f"$\\begin{{array}}{{rl}} V_{{x}} & = {p.Vx_bar}"
-                + f"\\\\ \\langle p \\rangle & = {T:.2f} \\end{{array}}$")
+            if cfg.verbose:
+                print(f"momentum of the wavepacket {T}")
+            if cfg.small_scale:
+                latex_str = (
+                    f"$\\begin{{array}}{{rl}} V_{{0}} & = {p.V_barrier:.2e}"
+                    + f"\\\\ \\langle p \\rangle & = {T:.2e} \\end{{array}}$")
+            else:
+                latex_str = (
+                    f"$\\begin{{array}}{{rl}} V_{{0}} & = {p.V_barrier}"
+                    + f"\\\\ \\langle p \\rangle & = {T:.2f} \\end{{array}}$")
             ax.text(0.05, 0.85, latex_str, transform=ax.transAxes,
                     ha='left', va='center', fontsize=20)
 
@@ -242,6 +299,10 @@ class MyPlotter(BasePlotter):
         # are the necessary number of seconds in the animation
         self._step = len(self._t) // self._total_frames + 1
         self._x = np.arange(-p.x_max, p.x_max, p.dx)
+        if cfg.verbose:
+            print(f"number of total time steps {len(self._t)}")
+            print(f"number of total space steps {len(self._x)}")
+            print(f"number of time steps for each frame {self._step}")
         if cfg.superposition:
             self._psi = create_superposition(self._x)
         else:
@@ -250,33 +311,31 @@ class MyPlotter(BasePlotter):
         # define the potential and plot it
         self._V = create_potential(self._x)
         self.create_barrier(ax)
-
-        # create potential energy matrix
-        V = sparse.diags(self._V, 0)
-        # create kinetic energy matrix
-        T = sparse.diags([1, -2, 1], [-1, 0, 1],
-                         shape=(N, N)) * (-p.hbar**2 / (2 * p.m * p.dx**2))
-        # Hamiltonian matrix (kinetic + potential)
-        self._H = T + V
-
-        # if scipy is not used, allocate the dense matrices for the matrix
-        # multiplication
-        if not cfg.increase_precision:
-            self._A = np.zeros((N, N), dtype=complex)
-            self._B = np.zeros((N, N), dtype=complex)
+        if cfg.increase_precision:
+            # create potential energy matrix
+            V = sparse.diags(self._V, 0)
+            # create kinetic energy matrix
+            T = sparse.diags([1, -2, 1], [-1, 0, 1],
+                             shape=(N, N)) * (-p.hbar**2 / (2 * p.m * p.dx**2))
+            # Hamiltonian matrix (kinetic + potential)
+            self._H = T + V
+        else:
+            # if scipy is not used, allocate the dense matrices for the matrix
+            # multiplication
+            self._H = np.zeros((N, N), dtype=complex)
+            for i in range(N):
+                self._H[i, i] = self._V[i]
+                if i > 0:
+                    self._H[i, i - 1] = -p.hbar**2 / (2 * p.m * p.dx**2)
+                if i < N - 1:
+                    self._H[i, i + 1] = -p.hbar**2 / (2 * p.m * p.dx**2)
             # Create identity matrix
             In = np.eye(N, dtype=complex)
 
-            # Convert sparse H to dense
-            H_dense = self._H.todense()
-
             # Time evolution operators (Crank-Nicolson method)
-            for i in range(N):
-                for j in range(N):
-                    self._A[i, j] = In[i, j] - 1j * p.dt / (
-                        2 * p.hbar) * H_dense[i, j]
-                    self._B[i, j] = In[i, j] + 1j * p.dt / (
-                        2 * p.hbar) * H_dense[i, j]
+            factor = 1j * p.dt / (2 * p.hbar)
+            self._A = In - factor * self._H
+            self._B = In + factor * self._H
 
         # initialize the plots and store the line objects
         if cfg.plot_prob:
@@ -342,7 +401,8 @@ class MyPlotter(BasePlotter):
             return
         if not is_plot:
             super().frame_update(i)
-
+        if cfg.verbose:
+            print(f"current frame: {i+1}")
         # advance time evolution
         if cfg.increase_precision:
             # define the time span and evaluation points for do many steps
@@ -388,11 +448,19 @@ class MyPlotter(BasePlotter):
             # compute the probability density
             prob = integrate.simps(
                 np.abs(self._psi.conj() * self._psi), self._x)
-            formatted_text = (
-                f"$\\begin{{array}}{{rl}} t & = {t_end:.2f} \\\\"
-                + f"P & = {prob:.2f} \\end{{array}}$")
+            if cfg.small_scale:
+                formatted_text = (
+                    f"$\\begin{{array}}{{rl}} t & = {t_end:.2e} \\\\"
+                    + f"P & = {prob:.2f} \\end{{array}}$")
+            else:
+                formatted_text = (
+                    f"$\\begin{{array}}{{rl}} t & = {t_end:.2f} \\\\"
+                    + f"P & = {prob:.2f} \\end{{array}}$")
         else:
-            formatted_text = (f'$t={t_end:.2f}$')
+            if cfg.small_scale:
+                formatted_text = (f'$t={t_end:.2e}$')
+            else:
+                formatted_text = (f'$t={t_end:.2f}$')
         self._text_obj.set_text(formatted_text)
 
 
