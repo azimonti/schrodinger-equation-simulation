@@ -7,12 +7,15 @@
 /**********************/
 '''
 import argparse
+from datetime import timedelta
 import matplotlib.pyplot as plt
 from matplotlib.collections import PolyCollection
 import numpy as np
+import os
 from scipy import integrate, sparse
 from scipy.special import hermite
 import sys
+import time
 
 from mod_config import cfg, palette, p1, electron_params
 from mod_plotter import BasePlotter
@@ -112,9 +115,87 @@ def schrodinger_rhs(t, psi, H):
     return dpsi_dt
 
 
+def compute(x, t_, psi_, V_potential, total_frames):
+    t = t_
+    psi = psi_
+    start_time = time.time()
+    lim_td = 0.0
+    end_warning = True
+    # adjust the simulation step necessary for each iteration so that there
+    # are the necessary number of seconds in the animation
+    step = int((p.t_max - lim_td) / p.dt) // total_frames + 1
+    if cfg.verbose:
+        print(f"number of total time steps {int((p.t_max-lim_td)/p.dt)}")
+        print(f"number of total space steps {len(x)}")
+        print(f"number of time steps for each frame {step}")
+    N = len(x)
+    if cfg.increase_precision:
+        # create potential energy matrix
+        V = sparse.diags(V_potential, 0)
+        # create kinetic energy matrix
+        T = sparse.diags([1, -2, 1], [-1, 0, 1],
+                         shape=(N, N)) * (-p.hbar**2 / (2 * p.m * p.dx**2))
+        # Hamiltonian matrix (kinetic + potential)
+        H = T + V
+    else:
+        # if scipy is not used, allocate the dense matrices for the matrix
+        # multiplication
+        H = np.zeros((N, N), dtype=complex)
+        for i in range(N):
+            H[i, i] = V_potential[i]
+            if i > 0:
+                H[i, i - 1] = -p.hbar**2 / (2 * p.m * p.dx**2)
+            if i < N - 1:
+                H[i, i + 1] = -p.hbar**2 / (2 * p.m * p.dx**2)
+        # Create identity matrix
+        In = np.eye(N, dtype=complex)
+        # Time evolution operators (Crank-Nicolson method)
+        factor = 1j * p.dt / (2 * p.hbar)
+        A = In - factor * H
+        B = In + factor * H
+    for i in range(total_frames):
+        # if already after the end of the time to simulate stop
+        if step * p.dt * i < p.t_max:
+            t.append(t[i] + p.dt * step)
+            if cfg.verbose:
+                print(f"current frame: {i+1}")
+            # advance time evolution
+            if cfg.increase_precision:
+                # define the time span and evaluation points for do many steps
+                # with a single calculation
+                t_span = [0, step * p.dt]
+                t_eval = np.linspace(0, step * p.dt, step + 1)
+                sol = integrate.solve_ivp(
+                    schrodinger_rhs, t_span, psi[-1], method=cfg.rk_method,
+                    t_eval=t_eval, args=(H,))
+                # update psi to the last computed value
+                psi.append(sol.y[:, -1])
+            else:
+                for _ in range(step):
+                    psi.append(np.linalg.solve(A, (B @  psi[-1])))
+        else:
+            if end_warning:
+                end_warning = False
+                print(f"Simulation ended at frame {i}")
+    elapsed_time = time.time() - start_time
+    duration = timedelta(seconds=int(elapsed_time))
+    if duration.total_seconds() >= 3600:
+        elapsed_time_formatted = str(duration)
+    else:
+        minutes, seconds = divmod(duration.total_seconds(), 60)
+    elapsed_time_formatted = (
+        f"{int(minutes):02d}:{int(seconds):02d}")
+    print(f"Compute Time: {elapsed_time_formatted}")
+    return t, psi
+
+
 class MyPlotter(BasePlotter):
-    def __init__(self, params: dict, outfile: str):
+    def __init__(self, params: dict, x, t, psi, V, outfile: str):
         super().__init__(params, outfile)
+        self._x = x
+        self._t = t
+        self._psi = psi
+        self._V = V
 
     def create_axes(self, is_plot: bool):
         ax = self._axs_p if is_plot else self._axs_a
@@ -292,51 +373,9 @@ class MyPlotter(BasePlotter):
                     ha='left', va='center', fontsize=20)
 
     def init_graph(self, ax):
-        lim_td = 0.0
-        lim_tu = p.t_max
-        self._t = np.arange(lim_td, lim_tu, p.dt)
-        # adjust the simulation step necessary for each iteration so that there
-        # are the necessary number of seconds in the animation
-        self._step = len(self._t) // self._total_frames + 1
-        self._x = np.arange(-p.x_max, p.x_max, p.dx)
-        if cfg.verbose:
-            print(f"number of total time steps {len(self._t)}")
-            print(f"number of total space steps {len(self._x)}")
-            print(f"number of time steps for each frame {self._step}")
-        if cfg.superposition:
-            self._psi = create_superposition(self._x)
-        else:
-            self._psi = create_wavepacket(self._x)
-        N = len(self._x)
-        # define the potential and plot it
-        self._V = create_potential(self._x)
+
+        # plot the potential barrier
         self.create_barrier(ax)
-        if cfg.increase_precision:
-            # create potential energy matrix
-            V = sparse.diags(self._V, 0)
-            # create kinetic energy matrix
-            T = sparse.diags([1, -2, 1], [-1, 0, 1],
-                             shape=(N, N)) * (-p.hbar**2 / (2 * p.m * p.dx**2))
-            # Hamiltonian matrix (kinetic + potential)
-            self._H = T + V
-        else:
-            # if scipy is not used, allocate the dense matrices for the matrix
-            # multiplication
-            self._H = np.zeros((N, N), dtype=complex)
-            for i in range(N):
-                self._H[i, i] = self._V[i]
-                if i > 0:
-                    self._H[i, i - 1] = -p.hbar**2 / (2 * p.m * p.dx**2)
-                if i < N - 1:
-                    self._H[i, i + 1] = -p.hbar**2 / (2 * p.m * p.dx**2)
-            # Create identity matrix
-            In = np.eye(N, dtype=complex)
-
-            # Time evolution operators (Crank-Nicolson method)
-            factor = 1j * p.dt / (2 * p.hbar)
-            self._A = In - factor * self._H
-            self._B = In + factor * self._H
-
         # initialize the plots and store the line objects
         if cfg.plot_prob:
             self._line, = ax.plot([], [], lw=2, color=c.r, label='$|\\Psi|^2$')
@@ -360,14 +399,13 @@ class MyPlotter(BasePlotter):
         self._text_obj = ax.text(
             0.7, 0.85, '', transform=ax.transAxes,
             ha='center', va='center', fontsize=20)
-
         # make the starting plot
         self.plot_update(0)
 
     def plot(self):
         if self.do_plot:
             self._fig_p, self._axs_p = plt.subplots(figsize=(12, 8), dpi=300)
-            if self.do_plot:
+            if self.plot:
                 super().plot()
                 self.create_axes(True)
                 self.init_graph(self._axs_p)
@@ -390,64 +428,47 @@ class MyPlotter(BasePlotter):
             return
         anim_args = (self._axs_a, False)
         self.test_animation_frame = 30
-        super().animate(self.frame_update, self._total_frames, anim_args)
+        super().animate(self.frame_update, len(self._psi) - 1, anim_args)
 
     def frame_update(self, i: int, axs: np.ndarray, is_plot: bool):
-        # if already after the end of the time to simulate return
-        if self._step * p.dt * i > self._t[-1]:
-            if not hasattr(self, '_end_warning'):
-                self._end_warning = True
-                print(f"Simulation ended at frame {i}")
-            return
         if not is_plot:
             super().frame_update(i)
-        if cfg.verbose:
-            print(f"current frame: {i+1}")
-        # advance time evolution
-        if cfg.increase_precision:
-            # define the time span and evaluation points for do many steps
-            # with a single calculation
-            t_span = [0, self._step * p.dt]
-            t_eval = np.linspace(0, self._step * p.dt, self._step + 1)
-            sol = integrate.solve_ivp(
-                schrodinger_rhs, t_span, self._psi, method=cfg.rk_method,
-                t_eval=t_eval, args=(self._H,))
-            self._psi = sol.y[:, -1]  # update psi to the last computed value
-        else:
-            for _ in range(self._step):
-                self._psi = np.linalg.solve(self._A, (self._B @ self._psi))
         self.plot_update(i + 1)
 
     def plot_update(self, cur_step: int):
         if cfg.plot_prob:
             self._line.set_data(
-                self._x, abs(self._psi.conjugate() * self._psi))
+                self._x, abs(self._psi[cur_step].conjugate() *
+                             self._psi[cur_step]))
         else:
             if cfg.plot_phase:
                 # extract the phase of psi
-                phase = np.angle(self._psi)
+                phase = np.angle(self._psi[cur_step])
                 # normalize phase to [0, 1] for hsl
                 normalized_phase = (phase + np.pi) / (2 * np.pi)
                 # create vertices for PolyCollection
                 verts = [np.column_stack([self._x, np.zeros_like(self._x)])]
-                verts.append(np.column_stack([self._x, abs(self._psi)]))
+                verts.append(np.column_stack([self._x,
+                                              abs(self._psi[cur_step])]))
                 # update the PolyCollection with phase colors
                 polys = [np.column_stack(
                     [[self._x[j], self._x[j + 1], self._x[j + 1], self._x[j]],
-                     [0, 0, abs(self._psi[j + 1]), abs(self._psi[j])]])
+                     [0, 0, abs(self._psi[cur_step][j + 1]),
+                      abs(self._psi[cur_step][j])]])
                     for j in range(len(self._x) - 1)]
                 self._poly.set_verts(polys)
                 self._poly.set_array(normalized_phase[:-1])
             else:
-                self._line1.set_data(self._x, self._psi.real)
-                self._line2.set_data(self._x, self._psi.imag)
-            self._line3.set_data(self._x, abs(self._psi))
+                self._line1.set_data(self._x, self._psi[cur_step].real)
+                self._line2.set_data(self._x, self._psi[cur_step].imag)
+            self._line3.set_data(self._x, abs(self._psi[cur_step]))
         # take into account minor rounding on the last iteration
-        t_end = self._step * p.dt * cur_step
+        t_end = self._t[cur_step]
         if cfg.compute_prob:
             # compute the probability density
             prob = integrate.simps(
-                np.abs(self._psi.conj() * self._psi), self._x)
+                np.abs(self._psi[cur_step].conj() * self._psi[cur_step]),
+                self._x)
             if cfg.small_scale:
                 formatted_text = (
                     f"$\\begin{{array}}{{rl}} t & = {t_end:.2e} \\\\"
@@ -470,12 +491,25 @@ def make_plot(outfile: str):
         'ggplot': False,
         'dark_background': False,
         'do_plot': True,
+        'do_compute': True,
         'do_animation': True,
         'animation_format': 'gif',
         'total_duration': 6,
         'fps': 30
     }
-    plotter = MyPlotter(params, outfile)
+    # init data so a plot can be done without computing
+    x = np.arange(-p.x_max, p.x_max, p.dx)
+    if cfg.superposition:
+        psi = [create_superposition(x)]
+    else:
+        psi = [create_wavepacket(x)]
+    t = [0.0]
+    # define the potential
+    V = create_potential(x)
+    if params['do_compute']:
+        t, psi = compute(
+            x, t, psi, V, params['total_duration'] * params['fps'])
+    plotter = MyPlotter(params, x, t, psi, V, outfile)
     plotter.plot()
     plotter.save_plot()
     plotter.init_animation()
@@ -491,7 +525,11 @@ def main():
     if args.ofile:
         ofile = args.ofile
     else:
-        ofile = "schrodinger_1d.png"
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        tmp_dir = os.path.join(script_dir, 'tmp')
+        if not os.path.exists(tmp_dir):
+            os.makedirs(tmp_dir)
+        ofile = tmp_dir + "/schrodinger_1d.png"
     make_plot(ofile)
 
 
