@@ -144,7 +144,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE.md) f
 
 This README provides a comprehensive overview of your Schrödinger equation simulation project, including its features, usage instructions, and potential types.
 
-Please refer to this article <a href="https://www.azimonti.com/programming/simulations/qm/1d-schrodinger-equation.html" target="_blank">here</a> for more detail explaination of the numerical aspects of the simulation.
+Please refer to this article [here](https://www.azimonti.com/programming/simulations/qm/1d-schrodinger-equation.html) for more detail explaination of the numerical aspects of the simulation.
 
 If you have any questions or want to get in touch regarding the project, please open an issue or contact the repository maintainers directly through GitHub.
 
