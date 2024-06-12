@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import PolyCollection
 import numpy as np
 import os
+import pickle
 from scipy import integrate, sparse
 from scipy.special import hermite
 import sys
@@ -19,7 +20,6 @@ import time
 
 from mod_config import cfg, palette, p1, electron_params
 from mod_plotter import BasePlotter
-
 
 c = palette
 # select the set of parameters to use
@@ -373,7 +373,6 @@ class MyPlotter(BasePlotter):
                     ha='left', va='center', fontsize=20)
 
     def init_graph(self, ax):
-
         # plot the potential barrier
         self.create_barrier(ax)
         # initialize the plots and store the line objects
@@ -410,8 +409,8 @@ class MyPlotter(BasePlotter):
                 self.create_axes(True)
                 self.init_graph(self._axs_p)
                 # Select with frame to plot without the need of animation
-                # frame_to_plot = self._total_frames - 1
-                frame_to_plot = 0
+                frame_to_plot = len(self._psi) - 1
+                # frame_to_plot = 0
                 for i in range(frame_to_plot):
                     self.frame_update(i, self._axs_p, True)
 
@@ -486,6 +485,7 @@ class MyPlotter(BasePlotter):
 
 
 def make_plot(outfile: str):
+    global cfg, p
     params = {
         'high_res': True,
         'ggplot': False,
@@ -493,11 +493,14 @@ def make_plot(outfile: str):
         'do_plot': True,
         'do_compute': True,
         'do_animation': True,
+        'load_data': False,
+        'save_data': False,
+        'data_folder': 'data/simul',
         'animation_format': 'gif',
         'total_duration': 6,
         'fps': 30
     }
-    # init data so a plot can be done without computing
+    #  init data so a plot can be done without computing
     x = np.arange(-p.x_max, p.x_max, p.dx)
     if cfg.superposition:
         psi = [create_superposition(x)]
@@ -505,11 +508,49 @@ def make_plot(outfile: str):
         psi = [create_wavepacket(x)]
     t = [0.0]
     # define the potential
-    V = create_potential(x)
+    v = create_potential(x)
+    # deserialize config
+    if params['load_data']:
+        folder = params['data_folder']
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        simul_dir = os.path.join(script_dir, folder)
+        if cfg.verbose:
+            print(f"Loading params ({simul_dir}/config.pkl)")
+        if not os.path.exists(simul_dir):
+            raise FileNotFoundError(f"path not found: {simul_dir}")
+        with open(simul_dir + '/config.pkl', 'rb') as file:
+            cfg = pickle.load(file)
+            p = pickle.load(file)
     if params['do_compute']:
         t, psi = compute(
-            x, t, psi, V, params['total_duration'] * params['fps'])
-    plotter = MyPlotter(params, x, t, psi, V, outfile)
+            x, t, psi, v, params['total_duration'] * params['fps'])
+    # serialize data
+    if params['save_data']:
+        folder = params['data_folder']
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        simul_dir = os.path.join(script_dir, folder)
+        if cfg.verbose:
+            print(f"Saving config and data ({simul_dir})")
+        if not os.path.exists(simul_dir):
+            os.makedirs(simul_dir)
+        with open(simul_dir + '/config.pkl', 'wb') as file:
+            pickle.dump(cfg, file)
+            pickle.dump(p, file)
+        with open(simul_dir + '/data.pkl', 'wb') as file:
+            pickle.dump(t, file)
+            pickle.dump(x, file)
+            pickle.dump(psi, file)
+            pickle.dump(v, file)
+    # deserialize data
+    if params['load_data']:
+        if cfg.verbose:
+            print(f"Loading data ({simul_dir}/data.pkl)")
+        with open(simul_dir + '/data.pkl', 'rb') as file:
+            t = pickle.load(file)
+            x = pickle.load(file)
+            psi = pickle.load(file)
+            v = pickle.load(file)
+    plotter = MyPlotter(params, x, t, psi, v, outfile)
     plotter.plot()
     plotter.save_plot()
     plotter.init_animation()
