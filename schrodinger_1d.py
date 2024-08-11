@@ -18,8 +18,9 @@ from scipy.special import hermite
 import sys
 import time
 
-from mod_config import cfg, palette, p1, electron_params
-from mod_plotter import BasePlotter
+from mod_config_1d import cfg, p1, electron_params
+from mod_config import palette
+from mod_plotter_1d import BasePlotter
 
 c = palette
 # select the set of parameters to use
