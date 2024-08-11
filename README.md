@@ -1,4 +1,4 @@
-# Schrödinger Equation Simulation
+# Schrödinger Equation Simulation - 1D
 
 Numerical simulation of the Schrödinger equation in 1D.
 
@@ -100,47 +100,30 @@ Some example configurations are available in the `examples_1d` directory.
 - **Explicit Runge-Kutta**:
   8th order method for higher precision in time integration.
 
-## Example Results - Wavepackets
+## Example Results
 
 Plain wave probability density:
 
-![Plain wave probability density](examples_1d/wavepackets/gif/plain_wave_prob.gif)
-
-Harmonic oscillator wavefunction with real and imaginary parts:
-
-![Harmonic oscillator wavefunction](examples_1d/wavepackets/gif/harmonic_osc_wf_1.gif)
+![Plain wave probability density](examples_1d/wavepackets/mp4/plain_wave_prob.mp4)
 
 Barrier of infinite length wavefunction with phase: 
 
-![Barrier of infinite length wavefunction](examples_1d/wavepackets/gif/infinite_barrier_1_wf_2.gif)
-
-## Example Results - Eigensolutions 
+![Barrier of infinite length wavefunction](examples_1d/wavepackets/mp4/infinite_barrier_1_wf_2.mp4)
 
 Harmonic oscillator single eigensolution for `n=3` showing no change in the wavefunction magnitude, only a change in the phase:
 
-![Harmonic oscillator wavefunction](examples_1d/eigensolutions/gif/harmonic_osc_2_wf_2.gif)
+![Harmonic oscillator wavefunction](examples_1d/eigensolutions/mp4/harmonic_osc_2_wf_2.mp4)
 
-Harmonic oscillator superposition of the first two eigensolutions showing periodic oscillations in the probability density:
 
-![Harmonic oscillator probability density](examples_1d/eigensolutions/gif/harmonic_osc_3_prob.gif)
-
-Infinite potential well single eigensolution for `n=3` showing no change in the wavefunction magnitude, only a change in the phase:
-
-![Infinite potential well wavefunction](examples_1d/eigensolutions/gif/infinite_well_1_wf_1.gif)
-
-Infinite potential well superposition of the first three eigensolutions showing periodic oscillations in the probability density:
-
-![Infinite potential well probability density](examples_1d/eigensolutions/gif/infinite_well_3_prob.gif)
-
-## Contributing
+# Contributing
 
 Contributions to the simulation of Schrödinger project are welcome. Whether it's through submitting bug reports, proposing new features, or contributing to the code, your help is appreciated. For major changes, please open an issue first to discuss what you would like to change.
 
-## License
+# License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE.md) file for details.
 
-## Contact
+# Contact
 
 This README provides a comprehensive overview of your Schrödinger equation simulation project, including its features, usage instructions, and potential types.
 
