@@ -104,16 +104,15 @@ Some example configurations are available in the `examples_1d` directory.
 
 Plain wave probability density:
 
-![Plain wave probability density](examples_1d/wavepackets/mp4/plain_wave_prob.mp4)
+https://github.com/user-attachments/assets/ec4be06e-73a4-4d9c-9e4e-94eccea29c00
 
 Barrier of infinite length wavefunction with phase: 
 
-![Barrier of infinite length wavefunction](examples_1d/wavepackets/mp4/infinite_barrier_1_wf_2.mp4)
+https://github.com/user-attachments/assets/9e189fa3-d9bb-4c7c-89d4-eaf4bdc1da8a
 
 Harmonic oscillator single eigensolution for `n=3` showing no change in the wavefunction magnitude, only a change in the phase:
 
-![Harmonic oscillator wavefunction](examples_1d/eigensolutions/mp4/harmonic_osc_2_wf_2.mp4)
-
+https://github.com/user-attachments/assets/a62f3526-ee19-4d3e-bbe9-223830be8f4f
 
 # Contributing
 
