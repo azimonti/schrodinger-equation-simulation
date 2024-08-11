@@ -496,7 +496,7 @@ def make_plot(outfile: str):
         'load_data': False,
         'save_data': False,
         'data_folder': 'data/simul',
-        'animation_format': 'gif',
+        'animation_format': 'mp4',
         'total_duration': 6,
         'fps': 30
     }
