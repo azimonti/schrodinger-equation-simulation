@@ -488,18 +488,20 @@ class MyPlotter(BasePlotter):
 def make_plot(outfile: str):
     global cfg, p
     params = {
-        'high_res': True,
+        # fixed parameters
         'ggplot': False,
         'dark_background': False,
-        'do_plot': True,
-        'do_compute': True,
-        'do_animation': True,
-        'load_data': False,
-        'save_data': False,
-        'data_folder': 'data/simul',
-        'animation_format': 'mp4',
-        'total_duration': 6,
-        'fps': 30
+        # configuarable parameters
+        'high_res': cfg.high_res,
+        'do_plot': cfg.plot,
+        'do_compute': cfg.compute,
+        'do_animation': cfg.animate,
+        'load_data': cfg.load_data,
+        'save_data': cfg.save_data,
+        'data_folder': cfg.data_folder,
+        'animation_format': cfg.animation_format,
+        'total_duration': cfg.total_duration,
+        'fps': cfg.fps
     }
     #  init data so a plot can be done without computing
     x = np.arange(-p.x_max, p.x_max, p.dx)
@@ -522,7 +524,8 @@ def make_plot(outfile: str):
         with open(simul_dir + '/config.pkl', 'rb') as file:
             cfg = pickle.load(file)
             p = pickle.load(file)
-    if params['do_compute']:
+    # Do not compute if load
+    else:
         t, psi = compute(
             x, t, psi, v, params['total_duration'] * params['fps'])
     # serialize data

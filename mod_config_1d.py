@@ -53,6 +53,16 @@ cfg = SimpleNamespace(
     plot_phase=True,      # plot real an imaginary or phase
     increase_precision=True,  # use Runge-Kutta or Euler
     rk_method='DOP853',   # RK method 'RK23', 'RK45', or 'DOP853'
+    high_res=True,        # enable high resolution simulation
+    plot=True,            # enable plotting
+    compute=True,         # enable computations
+    animate=True,         # enable animations
+    load_data=False,      # load data from a file
+    save_data=False,      # save data to a file
+    data_folder='data/simul',  # folder for data files
+    animation_format='mp4',    # format for animations
+    total_duration=6,     # total duration of the simulation
+    fps=30,               # frames per second for the animation
     verbose=False
 )
 
