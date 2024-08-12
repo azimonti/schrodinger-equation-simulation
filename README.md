@@ -124,7 +124,11 @@ Some example configurations are available in the `examples_2d` directory.
 
 Particle in a box a wavefunction:
 
+https://github.com/user-attachments/assets/e36394b5-cd03-41ac-b675-8c861f7bfb63
+
 Particle in a box with barrier probability density:
+
+https://github.com/user-attachments/assets/9e3b7c2d-aef8-4c77-bb7f-acc23cb401ec
 
 # Getting Started
 
