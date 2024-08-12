@@ -524,29 +524,6 @@ def make_plot(outfile: str):
         with open(simul_dir + '/config.pkl', 'rb') as file:
             cfg = pickle.load(file)
             p = pickle.load(file)
-    # Do not compute if load
-    else:
-        t, psi = compute(
-            x, t, psi, v, params['total_duration'] * params['fps'])
-    # serialize data
-    if params['save_data']:
-        folder = params['data_folder']
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        simul_dir = os.path.join(script_dir, folder)
-        if cfg.verbose:
-            print(f"Saving config and data ({simul_dir})")
-        if not os.path.exists(simul_dir):
-            os.makedirs(simul_dir)
-        with open(simul_dir + '/config.pkl', 'wb') as file:
-            pickle.dump(cfg, file)
-            pickle.dump(p, file)
-        with open(simul_dir + '/data.pkl', 'wb') as file:
-            pickle.dump(t, file)
-            pickle.dump(x, file)
-            pickle.dump(psi, file)
-            pickle.dump(v, file)
-    # deserialize data
-    if params['load_data']:
         if cfg.verbose:
             print(f"Loading data ({simul_dir}/data.pkl)")
         with open(simul_dir + '/data.pkl', 'rb') as file:
@@ -554,6 +531,27 @@ def make_plot(outfile: str):
             x = pickle.load(file)
             psi = pickle.load(file)
             v = pickle.load(file)
+    # Do not compute or serialize if load
+    else:
+        t, psi = compute(
+            x, t, psi, v, params['total_duration'] * params['fps'])
+        # serialize data
+        if params['save_data']:
+            folder = params['data_folder']
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            simul_dir = os.path.join(script_dir, folder)
+            if cfg.verbose:
+                print(f"Saving config and data ({simul_dir})")
+            if not os.path.exists(simul_dir):
+                os.makedirs(simul_dir)
+            with open(simul_dir + '/config.pkl', 'wb') as file:
+                pickle.dump(cfg, file)
+                pickle.dump(p, file)
+            with open(simul_dir + '/data.pkl', 'wb') as file:
+                pickle.dump(t, file)
+                pickle.dump(x, file)
+                pickle.dump(psi, file)
+                pickle.dump(v, file)
     plotter = MyPlotter(params, x, t, psi, v, outfile)
     plotter.plot()
     plotter.save_plot()

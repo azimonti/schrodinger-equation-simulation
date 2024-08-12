@@ -61,26 +61,6 @@ def create_potential(x):
                 f"Potential {p.potential} not implemented")
 ```
 
-## Getting Started
-
-To get started with these simulations:
-1. Clone the repository:
-   ```
-   git clone https://github.com/azimonti/schrodinger-equation-simulation.git
-   ```
-2. Navigate to the repository directory:
-   ```
-   cd schrodinger-equation-simulation
-   ```
-3. Install required dependencies:
-   ```
-   pip install -r requirements.txt
-   ```
-4. Run the simulation scripts:
-   ```
-   python schrodinger_1d.py
-   ```
-
 Some example configurations are available in the `examples_1d` directory.
 
 ## Visualization Options
@@ -113,6 +93,59 @@ https://github.com/user-attachments/assets/9e189fa3-d9bb-4c7c-89d4-eaf4bdc1da8a
 Harmonic oscillator single eigensolution for `n=3` showing no change in the wavefunction magnitude, only a change in the phase:
 
 https://github.com/user-attachments/assets/a62f3526-ee19-4d3e-bbe9-223830be8f4f
+
+# Schrödinger Equation Simulation - 2D
+
+Numerical simulation of the Schrödinger equation in 2D.
+
+## Features
+
+- **Potential Types**:
+  - Free space
+  - Particle in a box
+  - Particle in a box with barrier
+
+- **Wavefunction Initialization**:
+  - Wavepackets
+
+- **Visualization**:
+  - Probability density
+  - Modulus and phase (color phase)
+
+- **Time Evolution Methods**:
+  - Implicit Crank-Nicolson (second-order)
+
+- **Units**:
+  - Normalized units 
+
+Some example configurations are available in the `examples_2d` directory.
+
+## Example Results
+
+Particle in a box a wavefunction:
+
+Particle in a box with barrier probability density:
+
+# Getting Started
+
+To get started with these simulations:
+1. Clone the repository:
+   ```
+   git clone https://github.com/azimonti/schrodinger-equation-simulation.git
+   ```
+2. Navigate to the repository directory:
+   ```
+   cd schrodinger-equation-simulation
+   ```
+3. Install required dependencies:
+   ```
+   pip install -r requirements.txt
+   ```
+4. Run the simulation scripts:
+   ```
+   python schrodinger_1d.py
+   python schrodinger_2d.py
+   ```
 
 # Contributing
 
