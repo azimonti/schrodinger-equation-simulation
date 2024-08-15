@@ -118,12 +118,9 @@ class WavepacketSimulation:
         # set a finite barrier in the middle of the x
         # Set a finite barrier in the middle of the x direction
         if cfg.middle_barrier:
-            # Calculate the middle point in the x direction
-            middle_x = (self.x_min + self.x_max) / 2
-
             # Apply the barrier height to the region around
-            # the middle_x within the specified width
-            V_real += (np.abs(x - middle_x) <
+            # the center within the specified width
+            V_real += (np.abs(x - p.barrier_center) <
                        p.barrier_width) * p.barrier_height
         if cfg.infinite_barrier:
             return V_real
@@ -194,10 +191,9 @@ class WavepacketSimulation:
         plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
         if cfg.middle_barrier:
             color = (0.83, 0.83, 0.83)
-            middle_x = (p.x_min + p.x_max) / 2
             # Create the rectangle representing the barrier
             barrier_rect = patches.Rectangle(
-                (middle_x - p.barrier_width, p.y_min),
+                (p.barrier_center - p.barrier_width, p.y_min),
                 2 * p.barrier_width, p.y_max - p.y_min,
                 linewidth=2, edgecolor=color, facecolor='none')
             ax.add_patch(barrier_rect)
