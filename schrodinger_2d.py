@@ -16,11 +16,40 @@ import os
 import pickle
 from scipy import sparse
 from scipy.sparse.linalg import spsolve
+from scipy.special import erf
 import sys
 
 from mod_config_2d import cfg, p2
 
 p = p2
+
+
+def cap(z, z_min, z_max, width):
+    z_range = z_max - z_min
+    cap_width = width * z_range
+    left = np.maximum(0, (z_min + cap_width - z) / cap_width)
+    right = np.maximum(0, (z - (z_max - cap_width)) / cap_width)
+    match cfg.cap_type:
+        case 0:
+            # quadratic
+            return cfg.absorbing_strength * (left**2 + right**2)
+        case 1:
+            # cubic
+            return cfg.absorbing_strength * (left**3 + right**3)
+        case 2:
+            # quartic
+            return cfg.absorbing_strength * (left**4 + right**4)
+        case 3:
+            # optimal
+            a = cfg.cap_opt_a
+            left_optimal = 0.5 * cfg.absorbing_strength * (
+                1 + erf(a * left - 1))
+            right_optimal = 0.5 * cfg.absorbing_strength * (
+                1 + erf(a * right - 1))
+            return left_optimal + right_optimal
+        case _:
+            raise ValueError("Unknown CAP type "
+                             f"{cfg.cap_type}")
 
 
 class WavepacketSimulation:
@@ -41,7 +70,7 @@ class WavepacketSimulation:
         self.dt = dt
         self.t_max = t_max
         # self.num_frames = int(t_max / dt)
-        self.num_frames = p.total_duration * p.fps
+        self.num_frames = int(p.total_duration * p.fps)
         tsteps = int(t_max / dt)
         if tsteps < self.num_frames:
             self.num_frames = tsteps
@@ -115,8 +144,6 @@ class WavepacketSimulation:
 
     def V(self, x, y):
         V_real = np.zeros_like(x)
-        # set a finite barrier in the middle of the x
-        # Set a finite barrier in the middle of the x direction
         if cfg.middle_barrier:
             # Apply the barrier height to the region around
             # the center within the specified width
@@ -125,14 +152,31 @@ class WavepacketSimulation:
         if cfg.infinite_barrier:
             return V_real
         else:
-            width_x = 0.1 * (self.x_max - self.x_min)
-            width_y = 0.1 * (self.y_max - self.y_min)
-            strength = 5.0
             V_imag = np.zeros_like(x)
-            V_imag += strength * (1 - np.tanh((x - self.x_min) / width_x)**2)
-            V_imag += strength * (1 - np.tanh((self.x_max - x) / width_x)**2)
-            V_imag += strength * (1 - np.tanh((y - self.y_min) / width_y)**2)
-            V_imag += strength * (1 - np.tanh((self.y_max - y) / width_y)**2)
+            match cfg.absorbing_method:
+                case 0:
+                    width_x = cfg.absorbing_width_x * (
+                        self.x_max - self.x_min)
+                    width_y = cfg.absorbing_width_y * (
+                        self.y_max - self.y_min)
+                    strength = cfg.absorbing_strength
+                    V_imag += strength * (1 - np.tanh((
+                        x - self.x_min) / width_x)**2)
+                    V_imag += strength * (1 - np.tanh((
+                        self.x_max - x) / width_x)**2)
+                    V_imag += strength * (1 - np.tanh((
+                        y - self.y_min) / width_y)**2)
+                    V_imag += strength * (1 - np.tanh((
+                        self.y_max - y) / width_y)**2)
+                case 1:
+                    V_imag += cap(x, self.x_min, self.x_max,
+                                  cfg.absorbing_width_x)
+                    V_imag += cap(y, self.y_min, self.y_max,
+                                  cfg.absorbing_width_y)
+                case _:
+                    raise ValueError("Unsupported smoothing "
+                                     f"{cfg.absorbing_method}")
+
             return V_real + 1j * V_imag
 
     def create_laplacian_matrix(self):
