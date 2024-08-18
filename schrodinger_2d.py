@@ -20,36 +20,41 @@ from scipy.special import erf
 import sys
 
 from mod_config_2d import cfg, p2
+from mod_config import palette
 
+c = palette
 p = p2
 
 
-def cap(z, z_min, z_max, width):
+def cap(z, z_min, z_max, width, left=True, right=True):
     z_range = z_max - z_min
     cap_width = width * z_range
-    left = np.maximum(0, (z_min + cap_width - z) / cap_width)
-    right = np.maximum(0, (z - (z_max - cap_width)) / cap_width)
-    match cfg.cap_type:
-        case 0:
-            # quadratic
-            return cfg.absorbing_strength * (left**2 + right**2)
-        case 1:
-            # cubic
-            return cfg.absorbing_strength * (left**3 + right**3)
-        case 2:
-            # quartic
-            return cfg.absorbing_strength * (left**4 + right**4)
-        case 3:
-            # optimal
-            a = cfg.cap_opt_a
-            left_optimal = 0.5 * cfg.absorbing_strength * (
-                1 + erf(a * left - 1))
-            right_optimal = 0.5 * cfg.absorbing_strength * (
-                1 + erf(a * right - 1))
-            return left_optimal + right_optimal
-        case _:
-            raise ValueError("Unknown CAP type "
-                             f"{cfg.cap_type}")
+    result = 0
+    if left:
+        left_value = np.maximum(0, (z_min + cap_width - z) / cap_width)
+        match cfg.cap_type:
+            case 0:
+                result += cfg.absorbing_strength * (
+                    left_value**(int(cfg.cap_poly)))
+            case 1:
+                a = cfg.cap_opt_a
+                left_optimal = 0.5 * cfg.absorbing_strength * (
+                    1 + erf(a * left_value - 1))
+                result += left_optimal
+    if right:
+        right_value = np.maximum(0, (z - (z_max - cap_width)) / cap_width)
+        match cfg.cap_type:
+            case 0:
+                result += cfg.absorbing_strength * (
+                    right_value**(int(cfg.cap_poly)))
+            case 1:
+                a = cfg.cap_opt_a
+                right_optimal = 0.5 * cfg.absorbing_strength * (
+                    1 + erf(a * right_value - 1))
+                result += right_optimal
+    if not left and not right:
+        raise ValueError("Either left or right must be True")
+    return result
 
 
 class WavepacketSimulation:
@@ -65,7 +70,6 @@ class WavepacketSimulation:
         self.dx = self.x[1] - self.x[0]
         self.dy = self.y[1] - self.y[0]
         self.X, self.Y = np.meshgrid(self.x, self.y)
-
         # time parameters
         self.dt = dt
         self.t_max = t_max
@@ -84,18 +88,14 @@ class WavepacketSimulation:
         if cfg.verbose:
             print(f"saving each {self.tsteps_save} steps")
         self.psi_plot = []
-
-        # Wavepacket parameters
+        # wavepacket parameters
         self.x0, self.y0 = x0, y0
         self.sigma_x, self.sigma_y = sigma_x, sigma_y
         self.kx, self.ky = kx, ky
-
         # output
         self.outfile = outfile
-
         # initialize variables
         self.perc = None
-
         # initialize simulation
         self.initialize_simulation()
 
@@ -113,39 +113,35 @@ class WavepacketSimulation:
                         )) * np.exp(1j * (self.kx * x + self.ky * y))
 
     def kinetic_energy(self):
-        # Reshape self.psi to match the original 2D shape if necessary
+        # reshape self.psi to match the original 2D shape if necessary
         psi_reshaped = self.psi.reshape(self.Ny, self.Nx)
-        # Compute the Laplacian of the reshaped psi
+        # compute the Laplacian of the reshaped psi
         laplacian = (np.gradient(np.gradient(psi_reshaped, self.dx, axis=0),
                                  self.dx, axis=0) +
                      np.gradient(np.gradient(psi_reshaped, self.dy, axis=1),
                                  self.dy, axis=1))
-
         return -0.5 * np.sum(np.conj(psi_reshaped) * laplacian) * \
             self.dx * self.dy
 
     def potential_energy(self):
-        # Reshape self.psi to match the original 2D shape if necessary
+        # reshape self.psi to match the original 2D shape if necessary
         psi_reshaped = self.psi.reshape(self.Ny, self.Nx)
-
-        # Get the potential from the V function
+        # get the potential from the V function
         V = self.V(self.X, self.Y)
-
         return np.sum(np.conj(psi_reshaped) * V * psi_reshaped) *\
             self.dx * self.dy
 
     def total_energy(self):
-        # Calculate kinetic and potential energies using self.psi
+        # calculate kinetic and potential energies using self.psi
         T = self.kinetic_energy()
         V = self.potential_energy()
-
         total_energy = T + V
         return total_energy
 
     def V(self, x, y):
         V_real = np.zeros_like(x)
         if cfg.middle_barrier:
-            # Apply the barrier height to the region around
+            # apply the barrier height to the region around
             # the center within the specified width
             V_real += (np.abs(x - p.barrier_center) <
                        p.barrier_width) * p.barrier_height
@@ -160,23 +156,32 @@ class WavepacketSimulation:
                     width_y = cfg.absorbing_width_y * (
                         self.y_max - self.y_min)
                     strength = cfg.absorbing_strength
-                    V_imag += strength * (1 - np.tanh((
-                        x - self.x_min) / width_x)**2)
-                    V_imag += strength * (1 - np.tanh((
-                        self.x_max - x) / width_x)**2)
-                    V_imag += strength * (1 - np.tanh((
-                        y - self.y_min) / width_y)**2)
-                    V_imag += strength * (1 - np.tanh((
-                        self.y_max - y) / width_y)**2)
+                    if cfg.absorbing_xmin:
+                        V_imag += strength * (1 - np.tanh((
+                            x - self.x_min) / width_x)**2)
+                    if cfg.absorbing_xmax:
+                        V_imag += strength * (1 - np.tanh((
+                            self.x_max - x) / width_x)**2)
+                    if cfg.absorbing_ymin:
+                        V_imag += strength * (1 - np.tanh((
+                            y - self.y_min) / width_y)**2)
+                    if cfg.absorbing_ymax:
+                        V_imag += strength * (1 - np.tanh((
+                            self.y_max - y) / width_y)**2)
                 case 1:
-                    V_imag += cap(x, self.x_min, self.x_max,
-                                  cfg.absorbing_width_x)
-                    V_imag += cap(y, self.y_min, self.y_max,
-                                  cfg.absorbing_width_y)
+                    if cfg.absorbing_xmin or cfg.absorbing_xmax:
+                        V_imag += cap(x, self.x_min, self.x_max,
+                                      cfg.absorbing_width_x,
+                                      cfg.absorbing_xmin,
+                                      cfg.absorbing_xmax)
+                    if cfg.absorbing_ymin or cfg.absorbing_ymax:
+                        V_imag += cap(y, self.y_min, self.y_max,
+                                      cfg.absorbing_width_y,
+                                      cfg.absorbing_ymin,
+                                      cfg.absorbing_ymax)
                 case _:
                     raise ValueError("Unsupported smoothing "
                                      f"{cfg.absorbing_method}")
-
             return V_real + 1j * V_imag
 
     def create_laplacian_matrix(self):
@@ -233,6 +238,29 @@ class WavepacketSimulation:
         else:
             fig, ax = plt.subplots()
         plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
+        # specific visualization option for absorbing boundaries
+        if not cfg.infinite_barrier:
+            x_min_limit = p.x_min * (1 - 2 * cfg.absorbing_width_x) \
+                if cfg.absorbing_xmin else p.x_min
+            x_max_limit = p.x_max * (1 - 2 * cfg.absorbing_width_x) \
+                if cfg.absorbing_xmax else p.x_max
+            y_min_limit = p.y_min * (1 - 2 * cfg.absorbing_width_y) \
+                if cfg.absorbing_ymin else p.y_min
+            y_max_limit = p.y_max * (1 - 2 * cfg.absorbing_width_y) \
+                if cfg.absorbing_ymax else p.y_max
+            if not cfg.display_all_d:
+                # restrict the visualization domain
+                ax.set_xlim(x_min_limit, x_max_limit)
+                ax.set_ylim(y_min_limit, y_max_limit)
+            if cfg.display_all_d and cfg.show_smooth_d:
+                # plot the smoothing domain
+                rect = patches.Rectangle(
+                    (x_min_limit, y_min_limit),
+                    x_max_limit - x_min_limit,
+                    y_max_limit - y_min_limit,
+                    linewidth=2, edgecolor=c.o, facecolor='none')
+                ax.add_patch(rect)
+
         if cfg.middle_barrier:
             color = (0.83, 0.83, 0.83)
             # Create the rectangle representing the barrier
@@ -253,9 +281,9 @@ class WavepacketSimulation:
                 extent=[self.x_min, self.x_max, self.y_min, self.y_max],
                 cmap='hot')
         else:
-            # Set the figure background color
+            # set the figure background color
             fig.patch.set_facecolor('black')
-            # Set the axes background color
+            # set the axes background color
             ax.set_facecolor('black')
             # plot the modulus of the wavefunction and the phase
             psi = self.psi.reshape(self.Ny, self.Nx)
@@ -360,7 +388,6 @@ def make_plot(outfile: str):
                 pickle.dump(p, file)
             with open(simul_dir + '/data.pkl', 'wb') as file:
                 pickle.dump(sim, file)
-
     if cfg.animate:
         sim.animate()
 
