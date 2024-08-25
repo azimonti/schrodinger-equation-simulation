@@ -26,7 +26,7 @@ c = palette
 p = p2
 
 
-def cap(z, z_min, z_max, width, left=True, right=True):
+def Cap(z, z_min, z_max, width, left=True, right=True):
     z_range = z_max - z_min
     cap_width = width * z_range
     result = 0
@@ -84,6 +84,7 @@ class WavepacketSimulation:
         # to check the simulation quality. In general should
         # set to false
         if cfg.dev_simul:
+            print("dev_simul activated. using each computed step")
             self.tsteps_save = 1
         if cfg.verbose:
             print(f"dt: {self.dt}")
@@ -151,11 +152,20 @@ class WavepacketSimulation:
 
     def V(self, x, y):
         V_real = np.zeros_like(x)
-        if p.middle_barrier:
+        if p.middle_barrier and not p.slits:
             # apply the barrier height to the region around
-            # the center within the specified width
+            # the barrier_center within the specified width
             V_real += (np.abs(x - p.barrier_center) <
                        p.barrier_width) * p.barrier_height
+        if p.middle_barrier and p.slits:
+            # apply several barriers to the region around
+            # the barrier_center within the specified width
+            # allowing therefore slits
+            for start, end in zip(p.barriers_start, p.barriers_end):
+                # Ensure correct range regardless of order of start and end
+                V_real += ((np.abs(x - p.barrier_center) < p.barrier_width) &
+                           (y >= min(start, end)) &
+                           (y <= max(start, end))) * p.barrier_height
         if p.infinite_barrier:
             return V_real
         else:
@@ -181,12 +191,12 @@ class WavepacketSimulation:
                             self.y_max - y) / width_y)**2)
                 case 1:
                     if p.absorbing_xmin or p.absorbing_xmax:
-                        V_imag += cap(x, self.x_min, self.x_max,
+                        V_imag += Cap(x, self.x_min, self.x_max,
                                       p.absorbing_width_x,
                                       p.absorbing_xmin,
                                       p.absorbing_xmax)
                     if p.absorbing_ymin or p.absorbing_ymax:
-                        V_imag += cap(y, self.y_min, self.y_max,
+                        V_imag += Cap(y, self.y_min, self.y_max,
                                       p.absorbing_width_y,
                                       p.absorbing_ymin,
                                       p.absorbing_ymax)
@@ -279,14 +289,25 @@ class WavepacketSimulation:
                     linewidth=2, edgecolor=c.o, facecolor='none')
                 ax.add_patch(rect)
 
-        if p.middle_barrier:
+        if p.middle_barrier and not p.slits:
             color = (0.83, 0.83, 0.83)
-            # Create the rectangle representing the barrier
+            # create the rectangle representing the barrier
             barrier_rect = patches.Rectangle(
                 (p.barrier_center - p.barrier_width, p.y_min),
                 2 * p.barrier_width, p.y_max - p.y_min,
                 linewidth=2, edgecolor=color, facecolor='none')
             ax.add_patch(barrier_rect)
+
+        if p.middle_barrier and p.slits:
+            color = (0.83, 0.83, 0.83)
+            # create multiple vertical barriers with gaps (slits) between them
+            for start, end in zip(p.barriers_start, p.barriers_end):
+                barrier_rect = patches.Rectangle(
+                    (p.barrier_center - p.barrier_width, start),
+                    2 * p.barrier_width, end - start,
+                    linewidth=2, edgecolor=color, facecolor='none')
+                ax.add_patch(barrier_rect)
+
         if p.infinite_barrier:
             rect = patches.Rectangle(
                 (p.x_min, p.y_min), p.x_max - p.x_min, p.y_max - p.y_min,
@@ -294,7 +315,7 @@ class WavepacketSimulation:
             ax.add_patch(rect)
         if cfg.plot_prob:
             if cfg.fix_min_max:
-                # Compute minimum and maximum over the entire data
+                # compute minimum and maximum over the entire data
                 vmax_value = cfg.z_xmax_scale * np.max(np.abs(plot_psi**2))
                 vmin_value = cfg.z_xmin_scale * np.min(np.abs(plot_psi**2))
                 # plot the probability distribution
@@ -320,7 +341,7 @@ class WavepacketSimulation:
             hsv_image = cm.hsv(normalized_phase)
             hsv_image[..., 3] = np.clip(magnitude / np.nanmax(magnitude), 0, 1)
             if cfg.fix_min_max:
-                # Compute minimum and maximum over the entire data
+                # compute minimum and maximum over the entire data
                 vmax_value = cfg.z_xmax_scale * np.max(np.abs(plot_psi))
                 vmin_value = cfg.z_xmin_scale * np.min(np.abs(plot_psi))
                 self.img = ax.imshow(
@@ -379,6 +400,22 @@ class WavepacketSimulation:
             plt.show()
 
 
+def ConsistencyChecks():
+    if len(p.barriers_start) != len(p.barriers_end):
+        raise ValueError(
+            "barriers_start and barriers_end must ""have the same length")
+    if not p.middle_barrier and p.slits:
+        raise ValueError("Slits cannot be defined without a middle barrier")
+    if p.absorbing_method == 1:
+        match p.cap_type:
+            case 0 | 1:
+                pass  # valid cap_type
+            case _:
+                raise ValueError(
+                    "cap_type must be 0 (polynomial)"
+                    " or 1 (optimal) for absorbing_method 1")
+
+
 def make_plot(outfile: str):
     global p
     plt.rcParams['text.latex.preamble'] = r"\usepackage{bm} " \
@@ -402,12 +439,17 @@ def make_plot(outfile: str):
             # reset the output file
             sim.outfile = outfile
         if cfg.verbose:
+            # check the input data
+            ConsistencyChecks()
             energy = sim.total_energy()
             print(f"Total Energy of the wave packet: {energy.real:.4}")
         if cfg.verbose and p.middle_barrier:
             print(f"Barrier height: {p.barrier_height:.4}")
     else:
         # Do not compute or serialize if load
+        if cfg.verbose:
+            # check the input data
+            ConsistencyChecks()
         if cfg.high_res_dt:
             dt = p.dt_hr
         else:
