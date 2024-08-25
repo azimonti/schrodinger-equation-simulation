@@ -123,13 +123,17 @@ Some example configurations are available in the `examples_2d` directory.
 
 ## Example Results
 
-Particle in a box a wavefunction:
+Wavepacket in a box (wavefunction):
 
-https://github.com/user-attachments/assets/e36394b5-cd03-41ac-b675-8c861f7bfb63
+https://github.com/user-attachments/assets/6295b286-ab1e-48a3-8ee9-de80d67e12cd
 
-Particle in a box with barrier probability density:
+Wavepacket in a box with barrier (probability density):
 
-https://github.com/user-attachments/assets/9e3b7c2d-aef8-4c77-bb7f-acc23cb401ec
+https://github.com/user-attachments/assets/79def683-55ec-484b-bce5-0c97a5ed9982
+
+Wavepacket double slit experiment:
+
+https://github.com/user-attachments/assets/fb4536fe-6000-4c42-9624-25896d88c21b
 
 # Getting Started
 
