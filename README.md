@@ -103,7 +103,8 @@ Numerical simulation of the Schrödinger equation in 2D.
 - **Potential Types**:
   - Free space
   - Particle in a box
-  - Particle in a box with barrier
+  - Particle with barrier (in a box or in free space)
+  - Particle with multiple slits (in a box or in free space)
 
 - **Wavefunction Initialization**:
   - Wavepackets
