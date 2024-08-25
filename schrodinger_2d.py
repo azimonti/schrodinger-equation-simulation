@@ -18,6 +18,7 @@ from scipy import sparse
 from scipy.sparse.linalg import spsolve
 from scipy.special import erf
 import sys
+import time
 
 from mod_config_2d import cfg, p2
 from mod_config import palette
@@ -100,6 +101,7 @@ class WavepacketSimulation:
         self._outfile = outfile
         # initialize variables
         self.perc = None
+        self.start_time = None
         # initialize simulation
         self.initialize_simulation()
 
@@ -239,6 +241,7 @@ class WavepacketSimulation:
 
     def compute(self):
         self.perc = 0
+        self.start_time = time.time()
         for i in range(self.num_frames):
             for _ in range(self.tsteps_save):
                 # avance the Simulation the necessary number of substeps
@@ -257,10 +260,19 @@ class WavepacketSimulation:
                 perc = (i + 1) / self.num_frames * 100
                 if perc // 10 > self.perc // 10:
                     self.perc = perc
-                    print(f"completed {int(perc)}% of the computation")
+                    elapsed_time = time.time() - self.start_time
+                    if elapsed_time >= 3600:
+                        formatted_time = time.strftime(
+                            "%H:%M:%S", time.gmtime(elapsed_time))
+                    else:
+                        formatted_time = time.strftime(
+                            "%M:%S", time.gmtime(elapsed_time))
+                    print(f"completed {int(perc)}% of the computation, "
+                          f"elapsed {formatted_time}")
 
     def __init_plot(self):
         plot_psi = self.psi_plot[0]
+        cgray = (0.83, 0.83, 0.83)
         if cfg.high_res_plot:
             self.fig, ax = plt.subplots(dpi=300)
         else:
@@ -289,23 +301,29 @@ class WavepacketSimulation:
                     linewidth=2, edgecolor=c.o, facecolor='none')
                 ax.add_patch(rect)
 
+        if cfg.add_screen:
+            # display a screen location that could be used for data
+            # collection (double slit for example)
+            polygon = patches.Polygon(
+                cfg.screen_data, closed=True, fill=True, edgecolor=cgray,
+                facecolor=c.b, alpha=0.4, linewidth=0.7)
+            ax.add_patch(polygon)
+
         if p.middle_barrier and not p.slits:
-            color = (0.83, 0.83, 0.83)
             # create the rectangle representing the barrier
             barrier_rect = patches.Rectangle(
                 (p.barrier_center - p.barrier_width, p.y_min),
                 2 * p.barrier_width, p.y_max - p.y_min,
-                linewidth=2, edgecolor=color, facecolor='none')
+                linewidth=2, edgecolor=cgray, facecolor='none')
             ax.add_patch(barrier_rect)
 
         if p.middle_barrier and p.slits:
-            color = (0.83, 0.83, 0.83)
             # create multiple vertical barriers with gaps (slits) between them
             for start, end in zip(p.barriers_start, p.barriers_end):
                 barrier_rect = patches.Rectangle(
                     (p.barrier_center - p.barrier_width, start),
                     2 * p.barrier_width, end - start,
-                    linewidth=2, edgecolor=color, facecolor='none')
+                    linewidth=2, edgecolor=cgray, facecolor='none')
                 ax.add_patch(barrier_rect)
 
         if p.infinite_barrier:
@@ -371,7 +389,16 @@ class WavepacketSimulation:
             perc = (frame + 1) / self.num_frames * 100
             if perc // 10 > self.perc // 10:
                 self.perc = perc
-                print(f"completed {int(perc)}% of the animation")
+                elapsed_time = time.time() - self.start_time
+                if elapsed_time >= 3600:
+                    formatted_time = time.strftime(
+                        "%H:%M:%S", time.gmtime(elapsed_time))
+                else:
+                    formatted_time = time.strftime(
+                        "%M:%S", time.gmtime(elapsed_time))
+                print(f"completed {int(perc)}% of the animation, "
+                      f"elapsed {formatted_time}")
+
         return self.img,
 
     def plot(self, nframe=cfg.frame_id, fname=None):
@@ -384,6 +411,7 @@ class WavepacketSimulation:
 
     def animate(self):
         self.perc = 0
+        self.start_time = time.time()
         self.__init_plot()
         anim = FuncAnimation(
             self.fig, self.__animate_frame, frames=self.num_frames,
