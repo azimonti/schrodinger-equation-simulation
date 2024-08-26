@@ -261,14 +261,15 @@ class WavepacketSimulation:
                 if perc // 10 > self.perc // 10:
                     self.perc = perc
                     elapsed_time = time.time() - self.start_time
+                    current_time = time.strftime("%H:%M:%S", time.localtime())
                     if elapsed_time >= 3600:
                         formatted_time = time.strftime(
                             "%H:%M:%S", time.gmtime(elapsed_time))
                     else:
                         formatted_time = time.strftime(
                             "%M:%S", time.gmtime(elapsed_time))
-                    print(f"completed {int(perc)}% of the computation, "
-                          f"elapsed {formatted_time}")
+                    print(f"completed {int(perc)}% of the animation, "
+                          f"elapsed {formatted_time} [{current_time}]")
 
     def __init_plot(self):
         plot_psi = self.psi_plot[0]
@@ -390,6 +391,7 @@ class WavepacketSimulation:
             if perc // 10 > self.perc // 10:
                 self.perc = perc
                 elapsed_time = time.time() - self.start_time
+                current_time = time.strftime("%H:%M:%S", time.localtime())
                 if elapsed_time >= 3600:
                     formatted_time = time.strftime(
                         "%H:%M:%S", time.gmtime(elapsed_time))
@@ -397,7 +399,7 @@ class WavepacketSimulation:
                     formatted_time = time.strftime(
                         "%M:%S", time.gmtime(elapsed_time))
                 print(f"completed {int(perc)}% of the animation, "
-                      f"elapsed {formatted_time}")
+                      f"elapsed {formatted_time} [{current_time}]")
 
         return self.img,
 
@@ -527,7 +529,7 @@ def main():
         tmp_dir = os.path.join(script_dir, 'tmp')
         if not os.path.exists(tmp_dir):
             os.makedirs(tmp_dir)
-        ofile = tmp_dir + "/schrodinger_2d.png"
+        ofile = tmp_dir + "/" + cfg.output_file
     make_plot(ofile)
 
 
