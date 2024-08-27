@@ -53,6 +53,8 @@ p2 = SimpleNamespace(
     absorbing_ymax=True       # absorbing on upper border
 )
 
+p2_changes_load = SimpleNamespace()
+
 cfg = SimpleNamespace(
     plot_prob=True,           # plot probability or wavefunction
     dev_simul=False,          # align the number of steps to number of frames
@@ -62,6 +64,7 @@ cfg = SimpleNamespace(
     high_res_grid=False,      # enable high resolution simulation grid
     high_res_dt=False,        # enable high resolution simulation timestep
     high_res_plot=True,       # enable high resolution simulation plot
+    fig_4k=True,              # use 4k resolution
     fix_min_max=True,         # fix the min max in the z direction
     z_xmax_scale=1,           # scale the max
     z_xmin_scale=1,           # scale the min
@@ -71,6 +74,7 @@ cfg = SimpleNamespace(
     animate=True,             # enable animation
     save_anim=True,           # save animation
     plot_anim=False,          # plot animation
+    save_png=False,           # export all png
     load_data=False,          # load data from a file
     save_data=True,           # save data to a file
     data_folder='data/simul',          # folder for data files
