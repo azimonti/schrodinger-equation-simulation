@@ -20,11 +20,12 @@ from scipy.special import erf
 import sys
 import time
 
-from mod_config_2d import cfg, p2
+from mod_config_2d import cfg, p2, p2_changes_load
 from mod_config import palette
 
 c = palette
 p = p2
+p_changes_load = p2_changes_load
 
 
 def Cap(z, z_min, z_max, width, left=True, right=True):
@@ -268,16 +269,22 @@ class WavepacketSimulation:
                     else:
                         formatted_time = time.strftime(
                             "%M:%S", time.gmtime(elapsed_time))
-                    print(f"completed {int(perc)}% of the animation, "
+                    print(f"completed {int(perc)}% of the computation, "
                           f"elapsed {formatted_time} [{current_time}]")
 
     def __init_plot(self):
         plot_psi = self.psi_plot[0]
         cgray = (0.83, 0.83, 0.83)
-        if cfg.high_res_plot:
-            self.fig, ax = plt.subplots(dpi=300)
+        if cfg.fig_4k:
+            if cfg.high_res_plot:
+                self.fig, ax = plt.subplots(figsize=(12.8, 7.2), dpi=300)
+            else:
+                self.fig, ax = plt.subplots(figsize=(12.8, 7.2), dpi=300)
         else:
-            self.fig, ax = plt.subplots()
+            if cfg.high_res_plot:
+                self.fig, ax = plt.subplots(dpi=300)
+            else:
+                self.fig, ax = plt.subplots()
         plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
         # specific visualization option for absorbing boundaries
         if not p.infinite_barrier:
@@ -371,9 +378,10 @@ class WavepacketSimulation:
                 self.img = ax.imshow(
                     hsv_image, origin='lower',
                     extent=[self.x_min, self.x_max, self.y_min, self.y_max])
+        ax.set_aspect('auto')
         ax.axis('off')
 
-    def __animate_frame(self, frame, is_animation=True):
+    def __animate_frame(self, frame, is_animation=True, is_pngexport=False):
         if cfg.plot_prob:
             self.img.set_array(np.abs(
                 self.psi_plot[frame].reshape(self.Ny, self.Nx))**2)
@@ -386,7 +394,11 @@ class WavepacketSimulation:
             hsv_image[..., 3] = np.clip(
                 magnitude / np.nanmax(magnitude), 0, 1)
             self.img.set_array(hsv_image)
-        if cfg.verbose and is_animation:
+        if cfg.verbose and (is_animation or is_pngexport):
+            if is_animation:
+                ptext = "the animation"
+            else:
+                ptext = "png export"
             perc = (frame + 1) / self.num_frames * 100
             if perc // 10 > self.perc // 10:
                 self.perc = perc
@@ -398,7 +410,7 @@ class WavepacketSimulation:
                 else:
                     formatted_time = time.strftime(
                         "%M:%S", time.gmtime(elapsed_time))
-                print(f"completed {int(perc)}% of the animation, "
+                print(f"completed {int(perc)}% of {ptext}, "
                       f"elapsed {formatted_time} [{current_time}]")
 
         return self.img,
@@ -407,7 +419,7 @@ class WavepacketSimulation:
         if fname is None:
             fname = self._outfile
         self.__init_plot()
-        self.__animate_frame(nframe, False)
+        self.__animate_frame(nframe, False, True)
         plt.savefig(fname, dpi=300)
         plt.close()
 
@@ -428,6 +440,21 @@ class WavepacketSimulation:
                 anim.save(outfile_a, writer='imagemagick')
         if cfg.plot_anim:
             plt.show()
+
+    def export_png(self):
+        self.perc = 0
+        self.start_time = time.time()
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        tmp_dir = os.path.join(script_dir, 'tmp', cfg.data_folder)
+        if not os.path.exists(tmp_dir):
+            os.makedirs(tmp_dir)
+        base_name = os.path.basename(self._outfile)
+        for nframe in range(self.num_frames):
+            self.__init_plot()
+            self.__animate_frame(nframe, False, True)
+            fname = os.path.join(tmp_dir, f"{base_name}_{nframe:05d}.png")
+            plt.savefig(fname, dpi=300)
+            plt.close()
 
 
 def ConsistencyChecks():
@@ -462,6 +489,9 @@ def make_plot(outfile: str):
         simul_dir = os.path.join(script_dir, folder)
         with open(simul_dir + '/config.pkl', 'rb') as file:
             p = pickle.load(file)
+        # update any value in the config if needed
+        for key, value in p_changes_load.__dict__.items():
+            setattr(p, key, value)
         if cfg.verbose:
             print(f"Loading data ({simul_dir}/data.pkl)")
         with open(simul_dir + '/data.pkl', 'rb') as file:
@@ -513,6 +543,8 @@ def make_plot(outfile: str):
                 pickle.dump(sim, file)
     if cfg.animate:
         sim.animate()
+    if cfg.save_png:
+        sim.export_png()
     if cfg.plot:
         sim.plot()
 
