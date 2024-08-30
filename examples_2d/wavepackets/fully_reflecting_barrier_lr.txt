@@ -42,6 +42,8 @@ p2 = SimpleNamespace(
     absorbing_ymax=True       # absorbing on upper border
 )
 
+p2_changes_load = SimpleNamespace()
+
 cfg = SimpleNamespace(
     plot_prob=True,           # plot probability or wavefunction
     dev_simul=False,          # align the number of steps to number of frames
@@ -66,6 +68,7 @@ cfg = SimpleNamespace(
     save_png=False,           # export all png
     load_data=False,          # load data from a file
     save_data=True,           # save data to a file
+    use_pickle=True,          # use pickle or joblib
     data_folder='data/simul_fully_reflecting_barrier_lr',  # folder for data files
     output_file='fully_reflecting_barrier_lr.png',         # output file name
     animation_format='mp4',   # animation format (mp4 or gif)

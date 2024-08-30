@@ -68,8 +68,11 @@ cfg = SimpleNamespace(
     save_png=False,           # export all png
     load_data=False,          # load data from a file
     save_data=True,           # save data to a file
+    use_pickle=True,          # use pickle or joblib
     data_folder='data/simul_double_slit_hr_hdt_v1',  # folder for data files
     output_file='double_slit_hr_hdt_v1.png',         # output file name
     animation_format='mp4',   # animation format (mp4 or gif)
     verbose=True
 )
+
+# double slit simulation with high spatial and temporal resolution

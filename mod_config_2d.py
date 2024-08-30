@@ -77,6 +77,7 @@ cfg = SimpleNamespace(
     save_png=False,           # export all png
     load_data=False,          # load data from a file
     save_data=True,           # save data to a file
+    use_pickle=True,          # use pickle or joblib
     data_folder='data/simul',          # folder for data files
     output_file='schrodinger_2d.png',  # output file name
     animation_format='mp4',   # animation format (mp4 or gif)

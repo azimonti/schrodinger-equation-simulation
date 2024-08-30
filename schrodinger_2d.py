@@ -13,7 +13,6 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from matplotlib import cm
 import os
-import pickle
 from scipy import sparse
 from scipy.sparse.linalg import spsolve
 from scipy.special import erf
@@ -22,6 +21,14 @@ import time
 
 from mod_config_2d import cfg, p2, p2_changes_load
 from mod_config import palette
+
+if cfg.use_pickle:
+    from pickle import load, dump
+    ext = 'pkl'
+else:
+    from joblib import load, dump
+    ext = 'joblib'
+
 
 c = palette
 p = p2
@@ -487,15 +494,15 @@ def make_plot(outfile: str):
         folder = cfg.data_folder
         script_dir = os.path.dirname(os.path.abspath(__file__))
         simul_dir = os.path.join(script_dir, folder)
-        with open(simul_dir + '/config.pkl', 'rb') as file:
-            p = pickle.load(file)
+        with open(f'{simul_dir}/config.{ext}', 'rb') as file:
+            p = load(file)
         # update any value in the config if needed
         for key, value in p_changes_load.__dict__.items():
             setattr(p, key, value)
         if cfg.verbose:
-            print(f"Loading data ({simul_dir}/data.pkl)")
-        with open(simul_dir + '/data.pkl', 'rb') as file:
-            sim = pickle.load(file)
+            print(f"Loading data ({simul_dir}/data.{ext})")
+        with open(f'{simul_dir}/data.{ext}', 'rb') as file:
+            sim = load(file)
             # reset the output file
             sim.outfile = outfile
         if cfg.verbose:
@@ -537,10 +544,10 @@ def make_plot(outfile: str):
                 print(f"Saving config and data ({simul_dir})")
             if not os.path.exists(simul_dir):
                 os.makedirs(simul_dir)
-            with open(simul_dir + '/config.pkl', 'wb') as file:
-                pickle.dump(p, file)
-            with open(simul_dir + '/data.pkl', 'wb') as file:
-                pickle.dump(sim, file)
+            with open(f'{simul_dir}/config.{ext}', 'wb') as file:
+                dump(p, file)
+            with open(f'{simul_dir}/data.{ext}', 'wb') as file:
+                dump(sim, file)
     if cfg.animate:
         sim.animate()
     if cfg.save_png:
