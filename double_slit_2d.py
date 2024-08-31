@@ -16,6 +16,7 @@ import time
 
 from mod_config_double_slit_2d import cfg, p2_changes_load
 from mod_config import palette
+from schrodinger_2d import WavepacketSimulation
 
 if cfg.use_pickle:
     from pickle import load, dump
@@ -29,45 +30,9 @@ c = palette
 p_changes_load = p2_changes_load
 
 
-class WavepacketSimulation:
-    def __init__(self, outfile, Nx, Ny,
-                 x_min, x_max, y_min, y_max, dt, t_max, x0, y0,
-                 sigma_x, sigma_y, kx, ky):
-        # grid setup
-        self.Nx, self.Ny = Nx, Ny
-        self.x_min, self.x_max = x_min, x_max
-        self.y_min, self.y_max = y_min, y_max
-        self.x = np.linspace(x_min, x_max, Nx)
-        self.y = np.linspace(y_min, y_max, Ny)
-        self.dx = self.x[1] - self.x[0]
-        self.dy = self.y[1] - self.y[0]
-        self.X, self.Y = np.meshgrid(self.x, self.y)
-        # time parameters
-        self.dt = dt
-        self.t_max = t_max
-        # self.num_frames = int(t_max / dt)
-        self.num_frames = int(p.total_duration * p.fps)
-        tsteps = int(t_max / dt)
-        if tsteps < self.num_frames:
-            self.num_frames = tsteps
-        self.tsteps_save = int(tsteps / self.num_frames)
-        # align the number of steps to the number of frames
-        # this reduce the computation time and it is useful
-        # to check the simulation quality. In general should
-        # set to false
-        if cfg.dev_simul:
-            print("dev_simul activated. using each computed step")
-            self.tsteps_save = 1
-        if cfg.verbose:
-            print(f"dt: {self.dt}")
-            print(f"num steps to compute: {tsteps}")
-            print(f"num frames: {self.num_frames}")
-            print(f"saving each {self.tsteps_save} steps")
-        self.psi_plot = []
-        # wavepacket parameters
-        self.x0, self.y0 = x0, y0
-        self.sigma_x, self.sigma_y = sigma_x, sigma_y
-        self.kx, self.ky = kx, ky
+class DoubleSlitSimulation:
+    def __init__(self, outfile, wavepacket: WavepacketSimulation):
+        self.wp = wavepacket
         # output
         self._outfile = outfile
         # initialize variables
@@ -82,13 +47,6 @@ class WavepacketSimulation:
     def outfile(self, value):
         self._outfile = value
 
-    def introspection(self):
-        print(f"Grid Dimensions: Nx = {self.Nx}, Ny = {self.Ny}")
-        print(f"X-axis range: x_min = {self.x_min}, x_max = {self.x_max}, "
-              f"dx = {self.dx:.2f}")
-        print(f"Y-axis range: y_min = {self.y_min}, y_max = {self.y_max}, "
-              f"dy = {self.dy:.2f}")
-
     def line_cells_crossed(self):
         self.crossed_nx = []
         self.crossed_ny = []
@@ -96,10 +54,10 @@ class WavepacketSimulation:
         (x1, y1), (x2, y2) = cfg.capture_data
 
         # Calculate the grid coordinates of the endpoints
-        x1_idx = int((x1 - self.x_min) // self.dx)
-        y1_idx = int((y1 - self.y_min) // self.dy)
-        x2_idx = int((x2 - self.x_min) // self.dx)
-        y2_idx = int((y2 - self.y_min) // self.dy)
+        x1_idx = int((x1 - self.wp.x_min) // self.wp.dx)
+        y1_idx = int((y1 - self.wp.y_min) // self.wp.dy)
+        x2_idx = int((x2 - self.wp.x_min) // self.wp.dx)
+        y2_idx = int((y2 - self.wp.y_min) // self.wp.dy)
 
         # Bresenham's line algorithm adapted to this grid
         cells_crossed = []
@@ -117,8 +75,8 @@ class WavepacketSimulation:
             self.crossed_nx.append(x)
             self.crossed_ny.append(y)
             # compute cell mid point
-            x_mid = self.x_min + x * self.dx + 0.5 * self.dx
-            y_mid = self.y_min + y * self.dy + 0.5 * self.dy
+            x_mid = self.wp.x_min + x * self.wp.dx + 0.5 * self.wp.dx
+            y_mid = self.wp.y_min + y * self.wp.dy + 0.5 * self.wp.dy
             cell = (x_mid, y_mid)
             if cell in seen_cells:
                 raise ValueError(f"Duplicate cell detected at {cell}")
@@ -141,9 +99,9 @@ class WavepacketSimulation:
         self.screen_data_plot = []
 
         # Loop over each snapshot in psi_plot
-        for psi in self.psi_plot:
+        for psi in self.wp.psi_plot:
             # Reshape the 1D wavefunction array to 2D
-            psi = psi.reshape(self.Ny, self.Nx)
+            psi = psi.reshape(self.wp.Ny, self.wp.Nx)
             # initialize a temporary array to accumulate data for this snapshot
             temp_data = np.zeros(len(self.crossed_nx))
             # loop over each cell in the crossed path
@@ -176,14 +134,14 @@ class WavepacketSimulation:
         ax.xaxis.set_ticks_position('none')
         ax.yaxis.set_ticks_position('none')
         # the screen is assumed vertical in the y direction
-        ax.set_xlim(self.y_min, self.y_max)
+        ax.set_xlim(self.wp.y_min, self.wp.y_max)
         ax.set_ylim(0, max(self.screen_data_total) * 1.01)
         ax.set_yticklabels([])
         ax.set_xticklabels([])
         # init the total data
         self.screen_data_total_tmp = np.zeros(len(self.crossed_nx))
         # Calculate real distances along the y-axis
-        real_distances = self.y_min + np.array(self.crossed_ny) * self.dy
+        real_distances = self.wp.y_min + np.array(self.crossed_ny) * self.wp.dy
         # Sort by real distances
         self.sorted_indices = np.argsort(real_distances)
         self.sorted_distances = real_distances[self.sorted_indices]
@@ -209,16 +167,16 @@ class WavepacketSimulation:
         ax.xaxis.set_ticks_position('none')
         ax.yaxis.set_ticks_position('none')
         # Convert grid indices to real x and y coordinates
-        self.crossed_x = [self.x_min + nx * self.dx + 0.5 * self.dx
+        self.crossed_x = [self.wp.x_min + nx * self.wp.dx + 0.5 * self.wp.dx
                           for nx in self.crossed_nx]
-        self.crossed_y = [self.y_min + ny * self.dy + 0.5 * self.dy
+        self.crossed_y = [self.wp.y_min + ny * self.wp.dy + 0.5 * self.wp.dy
                           for ny in self.crossed_ny]
         self.curve3 = ax.scatter(self.crossed_x, self.crossed_y,
                                  c=np.zeros_like(self.crossed_x), cmap='hot',
                                  vmin=0, vmax=max(self.screen_data_total))
         # the screen is assumed vertical in the y direction
-        ax.set_xlim(self.x_min, self.x_max)
-        ax.set_ylim(self.y_min, self.y_max)
+        ax.set_xlim(self.wp.x_min, self.wp.x_max)
+        ax.set_ylim(self.wp.y_min, self.wp.y_max)
         ax.set_yticklabels([])
         ax.set_xticklabels([])
         plt.tight_layout()
@@ -234,7 +192,7 @@ class WavepacketSimulation:
                 ptext = "the animation"
             else:
                 ptext = "png export"
-            perc = (frame + 1) / self.num_frames * 100
+            perc = (frame + 1) / self.wp.num_frames * 100
             if perc // 10 > self.perc // 10:
                 self.perc = perc
                 elapsed_time = time.time() - self.start_time
@@ -264,7 +222,7 @@ class WavepacketSimulation:
         self.start_time = time.time()
         self.__init_plot()
         anim = FuncAnimation(
-            self.fig, self.__animate_frame, frames=self.num_frames,
+            self.fig, self.__animate_frame, frames=self.wp.num_frames,
             interval=1000 / p.fps, blit=True)
         if cfg.save_anim:
             base, ext = self._outfile.rsplit('.', 1)
@@ -329,12 +287,11 @@ def make_plot(outfile: str):
     if cfg.verbose:
         print(f"Loading data ({simul_dir}/data_s2d.{ext})")
     with open(f'{simul_dir}/data_s2d.{ext}', 'rb') as file:
-        sim = load(file)
-        # reset the output file
-        sim.outfile = outfile
+        wavepacket = load(file)
+    sim = DoubleSlitSimulation(outfile, wavepacket)
     num_cells, midpoints = sim.line_cells_crossed()
     if cfg.verbose:
-        sim.introspection()
+        wavepacket.introspection()
         print("Number of cells crossed:", num_cells)
         if cfg.print_crossed_cells:
             for i in range(0, len(midpoints), max(1, len(midpoints) // 10)):
@@ -342,11 +299,14 @@ def make_plot(outfile: str):
             print("Crossed nx:", sim.crossed_nx)
             print("Crossed ny:", sim.crossed_ny)
     sim.compute()
-    # remove data no longer needed
-    sim.X = []
-    sim.Y = []
-    sim.psi = []
-    sim.psi_plot = []
+    if cfg.animate:
+        sim.animate()
+    if cfg.save_png:
+        sim.export_png()
+    if cfg.plot:
+        sim.plot()
+    # remove data no longer needed before saving
+    del sim.wp
     if cfg.save_data:
         folder = cfg.data_folder
         script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -359,12 +319,6 @@ def make_plot(outfile: str):
             dump(p, file)
         with open(f'{simul_dir}/data_ds2d.{ext}', 'wb') as file:
             dump(sim, file)
-    if cfg.animate:
-        sim.animate()
-    if cfg.save_png:
-        sim.export_png()
-    if cfg.plot:
-        sim.plot()
 
 
 def main():
