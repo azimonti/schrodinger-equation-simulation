@@ -121,6 +121,13 @@ class WavepacketSimulation:
     def outfile(self, value):
         self._outfile = value
 
+    def introspection(self):
+        print(f"Grid Dimensions: Nx = {self.Nx}, Ny = {self.Ny}")
+        print(f"X-axis range: x_min = {self.x_min}, x_max = {self.x_max}, "
+              f"dx = {self.dx:.2f}")
+        print(f"Y-axis range: y_min = {self.y_min}, y_max = {self.y_max}, "
+              f"dy = {self.dy:.2f}")
+
     def initialize_simulation(self):
         self.psi = self.psi_0(self.X, self.Y).flatten()
         self.L = self.create_laplacian_matrix()
@@ -494,13 +501,13 @@ def make_plot(outfile: str):
         folder = cfg.data_folder
         script_dir = os.path.dirname(os.path.abspath(__file__))
         simul_dir = os.path.join(script_dir, folder)
-        with open(f'{simul_dir}/config.{ext}', 'rb') as file:
+        with open(f'{simul_dir}/config_s2d.{ext}', 'rb') as file:
             p = load(file)
         # update any value in the config if needed
         for key, value in p_changes_load.__dict__.items():
             setattr(p, key, value)
         if cfg.verbose:
-            print(f"Loading data ({simul_dir}/data.{ext})")
+            print(f"Loading data ({simul_dir}/data_s2d.{ext})")
         with open(f'{simul_dir}/data.{ext}', 'rb') as file:
             sim = load(file)
             # reset the output file
@@ -544,9 +551,9 @@ def make_plot(outfile: str):
                 print(f"Saving config and data ({simul_dir})")
             if not os.path.exists(simul_dir):
                 os.makedirs(simul_dir)
-            with open(f'{simul_dir}/config.{ext}', 'wb') as file:
+            with open(f'{simul_dir}/config_s2d.{ext}', 'wb') as file:
                 dump(p, file)
-            with open(f'{simul_dir}/data.{ext}', 'wb') as file:
+            with open(f'{simul_dir}/data_s2d.{ext}', 'wb') as file:
                 dump(sim, file)
     if cfg.animate:
         sim.animate()
