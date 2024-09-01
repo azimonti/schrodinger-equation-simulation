@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 '''
 /************************/
-/*   double_slit_2d.py  */
+/*   electrons_beam.py  */
 /*     Version 1.0      */
 /*      2024/08/31      */
 /************************/
@@ -14,9 +14,9 @@ import os
 import sys
 import time
 
-from mod_config_double_slit_2d import cfg, p2_changes_load_ds2d
+from mod_config_double_slit_2d import cfg, p2_changes_load_eb, p2_add_load_eb
 from mod_config import palette
-from schrodinger_2d import WavepacketSimulation
+from double_slit_2d import DoubleSlitSimulation
 
 if cfg.use_pickle:
     from pickle import load, dump
@@ -27,17 +27,32 @@ else:
 
 
 c = palette
-p_changes_load = p2_changes_load_ds2d
+p_changes_load = p2_changes_load_eb
+p_add_load = p2_add_load_eb
 
 
-class DoubleSlitSimulation:
-    def __init__(self, outfile, wavepacket: WavepacketSimulation):
-        self.wp = wavepacket
+class ElectronBeamSimulation:
+    def __init__(self, outfile, doubleslit: DoubleSlitSimulation):
         # output
         self._outfile = outfile
+        # normalize perc to make the sum equal to 1
+        self.probability = [p / sum(doubleslit.screen_data_total)
+                            for p in doubleslit.screen_data_total]
+        self.x_min = doubleslit.x_min
+        self.x_max = doubleslit.x_max
+        self.y_min = doubleslit.y_min
+        self.y_max = doubleslit.y_max
+        self.dx = doubleslit.dx
+        self.dy = doubleslit.dy
+        self.num_frames = int(p.total_duration * p.fps)
+        self.Nx = doubleslit.Nx
+        self.Ny = doubleslit.Ny
+        self.crossed_ny = doubleslit.crossed_ny
         # initialize variables
         self.perc = None
         self.start_time = None
+        if cfg.verbose:
+            print(f"Sum of probability: {sum(self.probability):.3f}")
 
     @property
     def outfile(self):
@@ -47,78 +62,22 @@ class DoubleSlitSimulation:
     def outfile(self, value):
         self._outfile = value
 
-    def line_cells_crossed(self):
-        self.crossed_nx = []
-        self.crossed_ny = []
-        # Unpack capture data from the global cfg
-        (x1, y1), (x2, y2) = cfg.capture_data
-
-        # Calculate the grid coordinates of the endpoints
-        x1_idx = int((x1 - self.wp.x_min) // self.wp.dx)
-        y1_idx = int((y1 - self.wp.y_min) // self.wp.dy)
-        x2_idx = int((x2 - self.wp.x_min) // self.wp.dx)
-        y2_idx = int((y2 - self.wp.y_min) // self.wp.dy)
-
-        # Bresenham's line algorithm adapted to this grid
-        cells_crossed = []
-        seen_cells = set()
-
-        dx = abs(x2_idx - x1_idx)
-        dy = abs(y2_idx - y1_idx)
-        sx = 1 if x1_idx < x2_idx else -1
-        sy = 1 if y1_idx < y2_idx else -1
-        err = dx - dy
-
-        x, y = x1_idx, y1_idx
-        while True:
-            # Store the actual grid indices
-            self.crossed_nx.append(x)
-            self.crossed_ny.append(y)
-            # compute cell mid point
-            x_mid = self.wp.x_min + x * self.wp.dx + 0.5 * self.wp.dx
-            y_mid = self.wp.y_min + y * self.wp.dy + 0.5 * self.wp.dy
-            cell = (x_mid, y_mid)
-            if cell in seen_cells:
-                raise ValueError(f"Duplicate cell detected at {cell}")
-            seen_cells.add(cell)
-            cells_crossed.append(cell)
-            if x == x2_idx and y == y2_idx:
-                break
-            e2 = 2 * err
-            if e2 > -dy:
-                err -= dy
-                x += sx
-            if e2 < dx:
-                err += dx
-                y += sy
-        return len(cells_crossed), cells_crossed
-
     def compute(self):
         # Initialize the screen_data array
-        self.screen_data_total = np.zeros(len(self.crossed_nx))
-        self.screen_data_plot = []
-
-        # Loop over each snapshot in psi_plot
-        for psi in self.wp.psi_plot:
-            # Reshape the 1D wavefunction array to 2D
-            psi = psi.reshape(self.wp.Ny, self.wp.Nx)
-            # initialize a temporary array to accumulate data for this snapshot
-            temp_data = np.zeros(len(self.crossed_nx))
-            # loop over each cell in the crossed path
-            for i, (nx, ny) in enumerate(zip(self.crossed_nx,
-                                             self.crossed_ny)):
-                if cfg.plot_prob:
-                    # calculate the probability density
-                    data = np.abs(psi[ny, nx])**2
-                else:
-                    # calculate the modulus of the wavefunction
-                    data = np.abs(psi[ny, nx])
-                # accumulate data for this snapshot
-                temp_data[i] = data
-            # Append the snapshot's data to the plot list as a 1D array
-            self.screen_data_plot.append(temp_data.copy())
-            # Accumulate this snapshot's data into the total
-            self.screen_data_total += temp_data
+        self.electrons = []
+        self.electrons_height = []
+        self.electrons_count = np.zeros(len(self.probability))
+        for n in range(int(p.electrons_nb)):
+            # Randomly choose a bucket based on the probability distribution
+            bucket = np.random.choice(len(self.probability),
+                                      p=self.probability)
+            # Update the electrons count
+            self.electrons_count[bucket] += 1
+            # Keep track of the electron bucket assignment
+            self.electrons.append(bucket)
+            # Compute a random height on the electron
+            height = np.random.uniform(0, 1)
+            self.electrons_height.append(height)
 
     def __init_plot(self):
         if cfg.fig_4k:
@@ -134,23 +93,18 @@ class DoubleSlitSimulation:
         ax.xaxis.set_ticks_position('none')
         ax.yaxis.set_ticks_position('none')
         # the screen is assumed vertical in the y direction
-        ax.set_xlim(self.wp.y_min, self.wp.y_max)
-        ax.set_ylim(0, max(self.screen_data_total) * 1.01)
+        ax.set_xlim(self.y_min, self.y_max)
+        ax.set_ylim(0, 1.01)
         ax.set_yticklabels([])
         ax.set_xticklabels([])
         # init the total data
-        self.screen_data_total_tmp = np.zeros(len(self.crossed_nx))
         # Calculate real distances along the y-axis
-        real_distances = self.wp.y_min + np.array(self.crossed_ny) * self.wp.dy
+        real_distances = self.y_min + np.array(self.crossed_ny) * self.dy
         # Sort by real distances
         self.sorted_indices = np.argsort(real_distances)
         self.sorted_distances = real_distances[self.sorted_indices]
-        y0 = np.zeros(len(self.sorted_distances))
-        self.curve1 = ax.plot(self.sorted_distances, y0, color=c.b,
-                              linestyle="-", linewidth=3)[0]
-        if cfg.plot_secondary:
-            self.curve2 = ax.plot(self.sorted_distances, y0, color=c.o,
-                                  linestyle="-", linewidth=3)[0]
+        self.curve1 = ax.scatter([], [], color=c.b, s=8,
+                                 edgecolor=c.k, linewidth=0.2)
         plt.tight_layout()
 
     def __init_plot2(self):
@@ -166,33 +120,48 @@ class DoubleSlitSimulation:
                 self.fig, ax = plt.subplots()
         ax.xaxis.set_ticks_position('none')
         ax.yaxis.set_ticks_position('none')
-        # Convert grid indices to real x and y coordinates
-        self.crossed_x = [self.wp.x_min + nx * self.wp.dx + 0.5 * self.wp.dx
-                          for nx in self.crossed_nx]
-        self.crossed_y = [self.wp.y_min + ny * self.wp.dy + 0.5 * self.wp.dy
-                          for ny in self.crossed_ny]
-        self.curve3 = ax.scatter(self.crossed_x, self.crossed_y,
-                                 c=np.zeros_like(self.crossed_x), cmap='hot',
-                                 vmin=0, vmax=max(self.screen_data_total))
         # the screen is assumed vertical in the y direction
-        ax.set_xlim(self.wp.x_min, self.wp.x_max)
-        ax.set_ylim(self.wp.y_min, self.wp.y_max)
+        ax.set_xlim(self.y_min, self.y_max)
+        ax.set_ylim(0, max(self.electrons_count) * 1.01)
         ax.set_yticklabels([])
         ax.set_xticklabels([])
+        real_distances = self.y_min + np.array(self.crossed_ny) * self.dy
+        # Sort by real distances
+        self.sorted_indices = np.argsort(real_distances)
+        self.sorted_distances = real_distances[self.sorted_indices]
+        y0 = np.zeros(len(self.sorted_distances))
+        self.curve2 = ax.plot(self.sorted_distances, y0, color=c.b,
+                              linestyle="-", linewidth=3)[0]
         plt.tight_layout()
 
     def __animate_frame(self, frame, is_animation=True, is_pngexport=False):
-        sorted_data = self.screen_data_plot[frame][self.sorted_indices]
-        self.screen_data_total_tmp += sorted_data
-        self.curve1.set_ydata(self.screen_data_total_tmp)
-        if cfg.plot_secondary:
-            self.curve2.set_ydata(sorted_data)
+        # total number of electrons
+        total_electrons = len(self.electrons)
+
+        # Determine how many electrons should be displayed by this frame
+        # We calculate this as a proportion of the total number of frames
+        electrons_to_show = (frame + 1) * total_electrons // self.num_frames
+
+        # ensure we don't exceed the total number of electrons
+        electrons_to_show = min(electrons_to_show, total_electrons)
+
+        # select the electrons that should be shown in this frame
+        selected_electrons = self.electrons[:electrons_to_show]
+
+        # use selected_electrons to get the corresponding X and Y data
+        x_data = [self.sorted_distances[i] for i in selected_electrons]
+        # get the corresponding Y data (heights)
+        y_data = self.electrons_height[:electrons_to_show]
+
+        # update scatter plot data
+        self.curve1.set_offsets(np.c_[x_data, y_data])
+
         if cfg.verbose and (is_animation or is_pngexport):
             if is_animation:
                 ptext = "the animation"
             else:
                 ptext = "png export"
-            perc = (frame + 1) / self.wp.num_frames * 100
+            perc = (frame + 1) / self.num_frames * 100
             if perc // 10 > self.perc // 10:
                 self.perc = perc
                 elapsed_time = time.time() - self.start_time
@@ -205,16 +174,16 @@ class DoubleSlitSimulation:
                         "%M:%S", time.gmtime(elapsed_time))
                 print(f"completed {int(perc)}% of {ptext}, "
                       f"elapsed {formatted_time} [{current_time}]")
-        if cfg.plot_secondary:
-            return self.curve1, self.curve2
-        else:
-            return (self.curve1,)
+        return (self.curve1,)
 
-    def plot(self, nframe=cfg.frame_id):
+    def plot(self, nframe=cfg.frame_id, fname=None):
+        if fname is None:
+            fname = self._outfile.replace('.png', f'_{nframe}.png')
+        self.perc = 0
+        self.start_time = time.time()
         self.__init_plot()
-        for n in range(nframe):
-            self.__animate_frame(n, False, True)
-        plt.savefig(self._outfile.replace('.png', f'_{nframe}.png'), dpi=300)
+        self.__animate_frame(nframe, False, True)
+        plt.savefig(fname, dpi=300)
         plt.close()
 
     def animate(self):
@@ -222,12 +191,12 @@ class DoubleSlitSimulation:
         self.start_time = time.time()
         self.__init_plot()
         anim = FuncAnimation(
-            self.fig, self.__animate_frame, frames=self.wp.num_frames,
+            self.fig, self.__animate_frame, frames=self.num_frames,
             interval=1000 / p.fps, blit=True)
         if cfg.save_anim:
             base, ext = self._outfile.rsplit('.', 1)
             animation_format = cfg.animation_format
-            outfile_a = f"{base}.{animation_format}"
+            outfile_a = f"{base}_beam.{animation_format}"
             if animation_format == 'mp4':
                 anim.save(outfile_a, writer='ffmpeg')
             elif animation_format == 'gif':
@@ -236,15 +205,13 @@ class DoubleSlitSimulation:
             plt.show()
         plt.close()
 
-        self.__init_plot()
-        sorted_data = self.screen_data_total[self.sorted_indices]
-        self.curve1.set_ydata(sorted_data)
-        plt.savefig(self._outfile, dpi=300)
-        plt.close()
+        # export the last frame
+        self.plot(self.num_frames, self._outfile.replace('.png', '_beam.png'))
 
+    def plot_beam_count(self):
         self.__init_plot2()
-        self.curve3.set_array(self.screen_data_total)
-        plt.savefig(self._outfile.replace('.png', '_2d.png'), dpi=300)
+        self.curve2.set_ydata(self.electrons_count)
+        plt.savefig(self._outfile.replace('.png', '_beam_count.png'), dpi=300)
         plt.close()
 
     def export_png(self):
@@ -256,15 +223,13 @@ class DoubleSlitSimulation:
             os.makedirs(tmp_dir)
         base_name = os.path.basename(self._outfile)
         for nframe in range(self.num_frames):
-            self.__init_plot()
-            self.__animate_frame(nframe, False, True)
             fname = os.path.join(tmp_dir, f"{base_name}_{nframe:05d}.png")
-            plt.savefig(fname, dpi=300)
-            plt.close()
+            self.plot(nframe, fname)
 
 
 def make_plot(outfile: str):
     global p
+    np.random.seed(63746)
     plt.rcParams['text.latex.preamble'] = r"\usepackage{bm} " \
         r"\usepackage{amsmath} \usepackage{helvet}"
     plt.rcParams.update({
@@ -279,25 +244,21 @@ def make_plot(outfile: str):
     simul_dir = os.path.join(script_dir, folder)
     if not os.path.exists(simul_dir):
         raise FileNotFoundError(f"Directory not found: {simul_dir}")
-    with open(f'{simul_dir}/config_s2d.{ext}', 'rb') as file:
+    with open(f'{simul_dir}/config_ds2d.{ext}', 'rb') as file:
         p = load(file)
     # update any value in the config if needed
     for key, value in p_changes_load.__dict__.items():
         setattr(p, key, value)
+    # add additional config
+    for key, value in p_add_load.__dict__.items():
+        setattr(p, key, value)
     if cfg.verbose:
         print(f"Loading data ({simul_dir}/data_s2d.{ext})")
-    with open(f'{simul_dir}/data_s2d.{ext}', 'rb') as file:
-        wavepacket = load(file)
-    sim = DoubleSlitSimulation(outfile, wavepacket)
-    num_cells, midpoints = sim.line_cells_crossed()
+    with open(f'{simul_dir}/data_ds2d.{ext}', 'rb') as file:
+        doubleslit = load(file)
+    sim = ElectronBeamSimulation(outfile, doubleslit)
     if cfg.verbose:
-        wavepacket.introspection()
-        print("Number of cells crossed:", num_cells)
-        if cfg.print_crossed_cells:
-            for i in range(0, len(midpoints), max(1, len(midpoints) // 10)):
-                print(f"Midpoint {i}: {midpoints[i]}")
-            print("Crossed nx:", sim.crossed_nx)
-            print("Crossed ny:", sim.crossed_ny)
+        doubleslit.introspection()
     sim.compute()
     if cfg.animate:
         sim.animate()
@@ -305,8 +266,8 @@ def make_plot(outfile: str):
         sim.export_png()
     if cfg.plot:
         sim.plot()
-    # remove data no longer needed before saving
-    del sim.wp
+    if cfg.save_beam_count:
+        sim.plot_beam_count()
     if cfg.save_data:
         folder = cfg.data_folder
         script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -315,9 +276,9 @@ def make_plot(outfile: str):
             print(f"Saving config and data ({simul_dir})")
         if not os.path.exists(simul_dir):
             os.makedirs(simul_dir)
-        with open(f'{simul_dir}/config_ds2d.{ext}', 'wb') as file:
+        with open(f'{simul_dir}/config_eb.{ext}', 'wb') as file:
             dump(p, file)
-        with open(f'{simul_dir}/data_ds2d.{ext}', 'wb') as file:
+        with open(f'{simul_dir}/data_eb.{ext}', 'wb') as file:
             dump(sim, file)
 
 
