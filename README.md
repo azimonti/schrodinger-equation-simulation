@@ -137,7 +137,7 @@ Wavepacket probability distribution at the screen location:
 
 15000 electron beam buildup at the screen location:
 
-
+https://github.com/user-attachments/assets/46772b45-ed44-4dda-9cd1-c9d806072250
 
 15000 electron beam distribution at the screen location, very close to the wavepacket probability as expected:
 
