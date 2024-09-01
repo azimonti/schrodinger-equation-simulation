@@ -121,19 +121,27 @@ Numerical simulation of the Schrödinger equation in 2D.
 
 Some example configurations are available in the `examples_2d` directory.
 
+# Double Slit Experiment For Electrons
+
+In this numerical simulation of the double slit experiment with electrons, the Schrödinger equation is used to model a wavepacket passing through a double slit. After interaction with the slits, the simulation calculates the fraction of the wavepacket that reaches a screen positioned behind the slits. This fraction is then used to simulate individual electrons impacting the screen, forming an interference pattern. The vertical position of each electron is randomly distributed uniformly along the vertical axis, simulating slits with a height much greater than their width.
+
 ## Example Results
 
-Wavepacket in a box (wavefunction):
+Wavepacket probability distribution at the screen location:
 
-https://github.com/user-attachments/assets/6295b286-ab1e-48a3-8ee9-de80d67e12cd
+![Wavepacket probability distribution at the screen location](examples_2d/electrons_beam/png/wavepacket_probability_distribution_screen.png)
 
-Wavepacket in a box with barrier (probability density):
+Wavepacket probability distribution at the screen location:
 
-https://github.com/user-attachments/assets/79def683-55ec-484b-bce5-0c97a5ed9982
+![Wavepacket probability distribution at the screen location](examples_2d/electrons_beam/png/wavepacket_probability_distribution_screen_2d.png)
 
-Wavepacket double slit experiment:
+15000 electron beam buildup at the screen location:
 
-https://github.com/user-attachments/assets/fb4536fe-6000-4c42-9624-25896d88c21b
+
+
+15000 electron beam distribution at the screen location, very close to the wavepacket probability as expected:
+
+![Wavepacket probability distribution at the screen location](examples_2d/electrons_beam/png/15000_electron_beam_distribution.png)
 
 # Getting Started
 
@@ -168,7 +176,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE.md) f
 
 This README provides a comprehensive overview of your Schrödinger equation simulation project, including its features, usage instructions, and potential types.
 
-Please refer to this article [here](https://www.azimonti.com/programming/simulations/qm/1d-schrodinger-equation.html) for more detail explaination of the numerical aspects of the simulation.
+Please refer to these articles ([here](https://www.azimonti.com/programming/simulations/qm/1d-schrodinger-equation.html), [here](https://www.azimonti.com/programming/simulations/qm/2d-schrodinger-equation.html), and [here](https://www.azimonti.com/programming/simulations/qm/electron-double-slit-experiment.html)) for more detail explaination of the numerical aspects of these simulations.
 
 If you have any questions or want to get in touch regarding the project, please open an issue or contact the repository maintainers directly through GitHub.
 
