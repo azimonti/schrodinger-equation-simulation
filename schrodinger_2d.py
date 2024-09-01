@@ -32,7 +32,7 @@ else:
 
 c = palette
 p = p2
-p_changes_load = p2_changes_load
+p_changes_load = p2_changes_load_s2d
 
 
 def Cap(z, z_min, z_max, width, left=True, right=True):

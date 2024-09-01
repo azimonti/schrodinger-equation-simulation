@@ -19,7 +19,7 @@ p2 = SimpleNamespace(
     ky=0.0,                   # initial wave vector in y direction
     t_max=10,                 # maximum simulation time
     total_duration=10,        # total duration of the animation
-    fps=30,                   # frames per second for the animation
+    fps=30,                   # frames per second of the animation
     infinite_barrier=True,    # reflecting or absorbing boundary
     middle_barrier=False,     # set a finite barrier at barrier_center
     slits=False,              # allow horizontal holes in the barrier (slits)
@@ -42,7 +42,7 @@ p2 = SimpleNamespace(
     absorbing_ymax=True       # absorbing on upper border
 )
 
-p2_changes_load = SimpleNamespace()
+p2_changes_load_s2d = SimpleNamespace()
 
 cfg = SimpleNamespace(
     plot_prob=True,           # plot probability or wavefunction
