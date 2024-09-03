@@ -19,7 +19,7 @@ from scipy.special import erf
 import sys
 import time
 
-from mod_config_2d import cfg, p2, p2_changes_load
+from mod_config_2d import cfg, p2, p2_changes_load_s2d
 from mod_config import palette
 
 if cfg.use_pickle:
@@ -82,7 +82,6 @@ class WavepacketSimulation:
         # time parameters
         self.dt = dt
         self.t_max = t_max
-        # self.num_frames = int(t_max / dt)
         self.num_frames = int(p.total_duration * p.fps)
         tsteps = int(t_max / dt)
         if tsteps < self.num_frames:
@@ -289,16 +288,12 @@ class WavepacketSimulation:
     def __init_plot(self):
         plot_psi = self.psi_plot[0]
         cgray = (0.83, 0.83, 0.83)
+        dpi = 300 if cfg.high_res_plot else 100
         if cfg.fig_4k:
-            if cfg.high_res_plot:
-                self.fig, ax = plt.subplots(figsize=(12.8, 7.2), dpi=300)
-            else:
-                self.fig, ax = plt.subplots(figsize=(12.8, 7.2), dpi=300)
+            figsize = (3840 / dpi, 2160 / dpi)
         else:
-            if cfg.high_res_plot:
-                self.fig, ax = plt.subplots(dpi=300)
-            else:
-                self.fig, ax = plt.subplots()
+            figsize = (1920 / dpi, 1080 / dpi)
+        self.fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
         plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
         # specific visualization option for absorbing boundaries
         if not p.infinite_barrier:
