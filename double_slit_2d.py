@@ -121,16 +121,12 @@ class DoubleSlitSimulation:
             self.screen_data_total += temp_data
 
     def __init_plot(self):
+        dpi = 300 if cfg.high_res_plot else 100
         if cfg.fig_4k:
-            if cfg.high_res_plot:
-                self.fig, ax = plt.subplots(figsize=(12.8, 7.2), dpi=300)
-            else:
-                self.fig, ax = plt.subplots(figsize=(12.8, 7.2), dpi=300)
+            figsize = (3840 / dpi, 2160 / dpi)
         else:
-            if cfg.high_res_plot:
-                self.fig, ax = plt.subplots(dpi=300)
-            else:
-                self.fig, ax = plt.subplots()
+            figsize = (1920 / dpi, 1080 / dpi)
+        self.fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
         ax.xaxis.set_ticks_position('none')
         ax.yaxis.set_ticks_position('none')
         # the screen is assumed vertical in the y direction
@@ -154,16 +150,12 @@ class DoubleSlitSimulation:
         plt.tight_layout()
 
     def __init_plot2(self):
+        dpi = 300 if cfg.high_res_plot else 100
         if cfg.fig_4k:
-            if cfg.high_res_plot:
-                self.fig, ax = plt.subplots(figsize=(12.8, 7.2), dpi=300)
-            else:
-                self.fig, ax = plt.subplots(figsize=(12.8, 7.2), dpi=300)
+            figsize = (3840 / dpi, 2160 / dpi)
         else:
-            if cfg.high_res_plot:
-                self.fig, ax = plt.subplots(dpi=300)
-            else:
-                self.fig, ax = plt.subplots()
+            figsize = (1920 / dpi, 1080 / dpi)
+        self.fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
         ax.xaxis.set_ticks_position('none')
         ax.yaxis.set_ticks_position('none')
         # Convert grid indices to real x and y coordinates
