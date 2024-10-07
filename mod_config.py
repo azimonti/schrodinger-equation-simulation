@@ -21,5 +21,5 @@ palette = SimpleNamespace(
 
 if __name__ == '__main__':
     if sys.version_info[0] < 3:
-        raise 'Must be using Python 3'
+        raise RuntimeError('Must be using Python 3')
     pass
