@@ -25,8 +25,8 @@ Numerical simulation of the Schrödinger equation in 1D.
   - Explicit Runge-Kutta (8th order)
 
 - **Units**:
-  - Electron scale units 
-  - Normalized units 
+  - Electron scale units
+  - Normalized units
 
 ## Potential Function
 
@@ -86,7 +86,7 @@ Plain wave probability density:
 
 https://github.com/user-attachments/assets/ec4be06e-73a4-4d9c-9e4e-94eccea29c00
 
-Barrier of infinite length wavefunction with phase: 
+Barrier of infinite length wavefunction with phase:
 
 https://github.com/user-attachments/assets/9e189fa3-d9bb-4c7c-89d4-eaf4bdc1da8a
 
@@ -117,7 +117,7 @@ Numerical simulation of the Schrödinger equation in 2D.
   - Implicit Crank-Nicolson (second-order)
 
 - **Units**:
-  - Normalized units 
+  - Normalized units
 
 Some example configurations are available in the `examples_2d` directory.
 
@@ -170,7 +170,7 @@ Contributions to the simulation of Schrödinger project are welcome. Whether it'
 
 # License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE.md) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 # Contact
 
